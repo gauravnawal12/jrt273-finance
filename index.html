@@ -928,10 +928,16 @@ function load() {
 
 /* Initialise — safe to call now that all constants are defined */
 S     = load();
-/* Ensure new fields exist */
-if (!S.pending)     S.pending = [];
-if (!S.tablerPins)  S.tablerPins = {};
 cYear = S.currentYear;
+/* Ensure new fields exist */
+if (!S.pending)                  S.pending = [];
+if (!S.tablerPins)               S.tablerPins = {};
+/* Guard: years array must always include currentYear */
+if (!S.years || !S.years.length) S.years = [cYear];
+if (!S.years.includes(cYear))    S.years.unshift(cYear);
+/* Guard: yearData must exist for currentYear */
+if (!S.yearData)                 S.yearData = {};
+if (!S.yearData[cYear])          S.yearData[cYear] = defYD();
 
 function sv()  { localStorage.setItem(SK, JSON.stringify(S)); }
 function yd()  { if (!S.yearData[cYear]) S.yearData[cYear] = defYD(); return S.yearData[cYear]; }
@@ -1048,9 +1054,20 @@ function applyPerms() {
 /* ═══════════════════════════════════════════════════════════
    ROUTING & INIT
    ═══════════════════════════════════════════════════════════ */
-function initApp() { buildYrSel(); populateCats(); populateNames(); renderDashboard(); }
+function initApp() {
+  buildYrSel();
+  populateCats();
+  populateNames();
+  renderDashboard();
+  updatePendingBadge();   // show pending count badge if treasurer
+  syncLoad();             // pull latest data from backend (non-blocking)
+}
 
 function buildYrSel() {
+  /* Guard: ensure years array is populated */
+  if (!S.years || !S.years.length) S.years = [cYear];
+  if (!S.years.includes(cYear))    S.years.unshift(cYear);
+
   document.getElementById('yrSel').innerHTML = S.years
     .map(y => `<option value="${y}"${y===cYear?' selected':''}>${y}</option>`).join('');
 }
@@ -1068,6 +1085,8 @@ function showTab(name, btn) {
   document.getElementById('tab-' + name).classList.add('active');
   btn.classList.add('active');
   renderTab(name);
+  // Refresh pending approval badge whenever Expenses tab is opened
+  if (name === 'expenses') updatePendingBadge();
 }
 
 function renderTab(name) {
@@ -1326,7 +1345,8 @@ function renderExpTbl() {
        <td class="amt">${INR(ex.amount)}</td>
        <td><div class="actions">
          <span class="badge ${ex.paid?'b-paid':'b-due'}">${ex.paid?'Paid':'Unpaid'}</span>
-         ${edit?`<button class="btn btn-ghost btn-sm" onclick="openExpMo(${ex.id})" title="Edit">✏️</button><button class="btn btn-danger btn-sm" onclick="delExp(${ex.id})" title="Delete">🗑</button>`:''}
+         <button class="btn btn-ghost btn-sm" onclick="openExpMo('${ex.id}')" title="Edit expense">✏️</button>
+         <button class="btn btn-danger btn-sm" onclick="delExp('${ex.id}')" title="Delete expense">🗑</button>
        </div></td>
      </tr>`).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No expenses match current filters</td></tr>';
 
@@ -1348,7 +1368,7 @@ function openExpMo(id) {
   document.getElementById('moExpT').textContent = id ? 'Edit Expense' : 'Add Expense';
   populateCats(); populateNames();
   if (id) {
-    const ex = yd().expenses.find(e=>e.id==id); if(!ex) return;
+    const ex = yd().expenses.find(e=>String(e.id)===String(id)); if(!ex) return;
     document.getElementById('expId').value=ex.id; document.getElementById('expDt').value=ex.date;
     document.getElementById('expAm').value=ex.amount; document.getElementById('expCt').value=ex.category;
     document.getElementById('expNm').value=ex.name; document.getElementById('expMd').value=ex.mode||'Cash';
@@ -1369,13 +1389,13 @@ function saveExp() {
   const ex={ id:id?String(id):genId('exp'), date:expDate, amount:+document.getElementById('expAm').value, category:document.getElementById('expCt').value, name:document.getElementById('expNm').value, mode:document.getElementById('expMd').value, period:dateToQ(expDate), paid:document.getElementById('expPd').value==='true', remark:document.getElementById('expRm').value };
   if (!ex.date||!ex.amount||!ex.category) { toast('Please fill Date, Amount and Category','err'); return; }
   const d=yd();
-  if (id){const i=d.expenses.findIndex(e=>e.id==id);if(i>=0)d.expenses[i]=ex;}else d.expenses.push(ex);
+  if (id){const i=d.expenses.findIndex(e=>String(e.id)===String(id));if(i>=0)d.expenses[i]=ex;}else d.expenses.push(ex);
   svSync(); cMo('moExp'); filterExp(); renderDashboard(); toast(id?'✅ Expense updated':'✅ Expense added');
 }
 
 function delExp(id) {
   if (!confirm('Permanently delete this expense?')) return;
-  yd().expenses=yd().expenses.filter(e=>e.id!=id);
+  yd().expenses=yd().expenses.filter(e=>String(e.id)!==String(id));
   svSync(); filterExp(); renderDashboard(); toast('Expense deleted','err');
 }
 
@@ -1780,6 +1800,32 @@ function renderSet() {
       <div></div>
     </div>`).join('');
 
+
+  /* ── GAS URL field & source indicator ── */
+  const _gasEl = document.getElementById('gasUrl');
+  if (_gasEl) {
+    _gasEl.value = localStorage.getItem('jrt273_gas_url') || '';
+    const _srcEl = document.getElementById('gasUrlSource');
+    if (_srcEl) {
+      if (window.__cfgLoaded) {
+        _srcEl.textContent = '📄 Set via config.json';
+        _srcEl.style.color = 'var(--green)';
+        _gasEl.readOnly = true;
+        _gasEl.style.background = 'var(--bg)';
+      } else {
+        _srcEl.textContent = '⌨ Manually configured';
+        _srcEl.style.color = 'var(--text-muted)';
+        _gasEl.readOnly = false;
+      }
+    }
+  }
+  const _pinEl = document.getElementById('defaultPin');
+  if (_pinEl) _pinEl.value = S.defaultTablerPin || localStorage.getItem('jrt273_default_pin') || '0273';
+
+  /* ── Tabler PINs per member ── */
+  renderTablerPinList();
+
+  /* ── Disable all inputs/buttons for non-Treasurer ── */
   if (!canEd()) {
     document.querySelectorAll('#tab-settings input,#tab-settings button,#tab-settings select').forEach(el=>el.disabled=true);
   }
@@ -2112,33 +2158,7 @@ function saveTablerPins() {
 }
 
 /* Override renderSet to include new fields */
-const _origRenderSet = renderSet;
-function renderSet() {
-  _origRenderSet();
-  /* GAS URL */
-  const gasEl = document.getElementById('gasUrl');
-  if (gasEl) {
-    gasEl.value = localStorage.getItem('jrt273_gas_url') || '';
-    /* Show whether URL came from config.json or was manually set */
-    const srcEl = document.getElementById('gasUrlSource');
-    if (srcEl) {
-      if (window.__cfgLoaded) {
-        srcEl.textContent = '📄 Set via config.json';
-        srcEl.style.color = 'var(--green)';
-        gasEl.readOnly = true; /* Prevent accidental override */
-        gasEl.style.background = 'var(--bg)';
-      } else {
-        srcEl.textContent = '⌨ Manually configured';
-        srcEl.style.color = 'var(--text-muted)';
-        gasEl.readOnly = false;
-      }
-    }
-  }
-  const pinEl = document.getElementById('defaultPin');
-  if (pinEl) pinEl.value = S.defaultTablerPin || localStorage.getItem('jrt273_default_pin') || '0273';
-  /* Tabler PINs */
-  renderTablerPinList();
-}
+/* renderSet extra logic — merged into renderSet() above */
 
 /* ═══════════════════════════════════════════════════════════
    PENDING APPROVALS
@@ -2450,22 +2470,9 @@ async function loadTablerHistory() {
 /* ═══════════════════════════════════════════════════════════
    INIT OVERRIDE — add syncLoad call on login
    ═══════════════════════════════════════════════════════════ */
-/* Patch initApp to trigger backend sync */
-const _origInitApp = initApp;
-function initApp() {
-  _origInitApp();
-  /* Load pending badge */
-  updatePendingBadge();
-  /* Sync from backend in background */
-  syncLoad();
-}
+/* initApp sync — inlined directly into initApp() below */
 
-/* Patch showTab to refresh pending badge when expenses tab opened */
-const _origShowTab = showTab;
-function showTab(name, btn) {
-  _origShowTab(name, btn);
-  if (name === 'expenses') updatePendingBadge();
-}
+/* showTab badge update — inlined directly into showTab() below */
 
 /* Patch all sv() callers to use svSync() after data modifications */
 /* (saveMem, saveExp, etc. already call sv() — we override svSync to include backend) */
