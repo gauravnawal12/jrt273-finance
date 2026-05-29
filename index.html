@@ -318,6 +318,11 @@ tr.unpaid-row:hover td{background:var(--amber-bd)!important}
       <input type="password" id="pwIn" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
     </div>
     <button class="btn-login" onclick="doLogin()">Sign In →</button>
+    <div style="margin-top:14px;text-align:center">
+      <button onclick="resetPasswords()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);text-decoration:underline;font-family:'Inter',sans-serif">
+        Reset all passwords to defaults
+      </button>
+    </div>
   </div>
 </div>
 
@@ -910,6 +915,14 @@ function load() {
       });
       /* Ensure subscription rates exist */
       if (!parsed.subRates) parsed.subRates = defSubRates();
+      /* Ensure passwords always exist with defaults as fallback */
+      if (!parsed.passwords)              parsed.passwords = {};
+      if (!parsed.passwords.chairman)     parsed.passwords.chairman  = 'chairman123';
+      if (!parsed.passwords.secretary)    parsed.passwords.secretary = 'secretary123';
+      if (!parsed.passwords.treasurer)    parsed.passwords.treasurer = 'treasurer123';
+      /* Ensure tablerPins and pending exist */
+      if (!parsed.tablerPins)  parsed.tablerPins  = {};
+      if (!parsed.pending)     parsed.pending     = [];
       return parsed;
     }
   } catch(e) { console.warn('Load failed:', e); }
@@ -929,9 +942,14 @@ function load() {
 /* Initialise — safe to call now that all constants are defined */
 S     = load();
 cYear = S.currentYear;
-/* Ensure new fields exist */
-if (!S.pending)                  S.pending = [];
-if (!S.tablerPins)               S.tablerPins = {};
+/* Ensure all top-level fields exist (guards against old schema versions) */
+if (!S.pending)                  S.pending      = [];
+if (!S.tablerPins)               S.tablerPins   = {};
+if (!S.passwords)                S.passwords    = {};
+if (!S.passwords.chairman)       S.passwords.chairman  = 'chairman123';
+if (!S.passwords.secretary)      S.passwords.secretary = 'secretary123';
+if (!S.passwords.treasurer)      S.passwords.treasurer = 'treasurer123';
+if (!S.subRates)                 S.subRates     = defSubRates();
 /* Guard: years array must always include currentYear */
 if (!S.years || !S.years.length) S.years = [cYear];
 if (!S.years.includes(cYear))    S.years.unshift(cYear);
@@ -1022,7 +1040,14 @@ function selRole(role, btn) {
 function doLogin() {
   if (!selR) { document.getElementById('lErr').textContent = 'Please select a role.'; return; }
   const pw = document.getElementById('pwIn').value;
-  if (pw !== S.passwords[selR]) { document.getElementById('lErr').textContent = 'Incorrect password. Please try again.'; return; }
+  /* Defensive: ensure passwords object exists */
+  if (!S.passwords || !S.passwords.chairman) {
+    S.passwords = { chairman:'chairman123', secretary:'secretary123', treasurer:'treasurer123' };
+  }
+  if (pw !== S.passwords[selR]) {
+    document.getElementById('lErr').textContent = 'Incorrect password. Please try again.';
+    return;
+  }
   cRole = selR;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').classList.remove('hidden');
@@ -1031,6 +1056,22 @@ function doLogin() {
   if (cRole !== 'treasurer') document.getElementById('roBanner').classList.remove('hidden');
   applyPerms();
   initApp();
+}
+
+/**
+ * Emergency password reset — restores all three role passwords to factory
+ * defaults. Shown on the login screen for recovery if passwords are lost.
+ */
+function resetPasswords() {
+  if (!confirm('Reset ALL passwords back to defaults?\n\nChairman: chairman123\nSecretary: secretary123\nTreasurer: treasurer123')) return;
+  if (!S.passwords) S.passwords = {};
+  S.passwords.chairman  = 'chairman123';
+  S.passwords.secretary = 'secretary123';
+  S.passwords.treasurer = 'treasurer123';
+  sv();
+  document.getElementById('lErr').textContent = '';
+  document.getElementById('lErr').style.color = 'var(--green)';
+  document.getElementById('lErr').textContent = '✅ Passwords reset. Use defaults to sign in.';
 }
 
 function logout() {
@@ -2001,7 +2042,12 @@ async function syncLoad() {
     if (cfg.years)      S.years      = cfg.years;
     if (cfg.categories) S.categories = cfg.categories;
     if (cfg.subRates)   S.subRates   = cfg.subRates;
-    if (cfg.passwords)  S.passwords  = cfg.passwords;
+    /* Only overwrite passwords if backend returns a fully populated object.
+       Prevents an unconfigured backend (empty Config sheet) from wiping
+       local passwords and locking everyone out. */
+    if (cfg.passwords && cfg.passwords.treasurer) {
+      S.passwords = cfg.passwords;
+    }
     if (cfg.tablerPins) S.tablerPins = cfg.tablerPins;
     if (ydData && ydData.data) {
       /* Merge: ensure all arrays exist */
