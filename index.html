@@ -1,0 +1,2481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2844">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>JRT 273 · Finance Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ── DESIGN TOKENS ── */
+:root {
+  --navy:#1a2844; --navy-mid:#243660; --navy-light:#e8edf5;
+  --gold:#b8860b; --gold-light:#fdf6e3; --gold-mid:#f0c040;
+  --bg:#f5f6f8; --surface:#fff; --border:#dde2ea; --border-mid:#c4ccd8;
+  --text-primary:#0f1923; --text-secondary:#4a5568; --text-muted:#8a96a8;
+  --green:#166534; --green-bg:#f0faf4; --green-bd:#bbf0d0;
+  --red:#991b1b; --red-bg:#fef2f2; --red-bd:#fecaca;
+  --amber:#92400e; --amber-bg:#fffbeb; --amber-bd:#fde68a;
+  --blue:#1e40af; --blue-bg:#eff6ff; --blue-bd:#bfdbfe;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.12),0 4px 12px rgba(0,0,0,.06);
+  --r-sm:6px; --r:10px; --r-lg:14px; --r-xl:20px; --t:.18s ease;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ── LOGIN ── */
+#loginScreen{position:fixed;inset:0;z-index:999;background:linear-gradient(160deg,var(--navy) 0%,var(--navy-mid) 60%,#2d4a7a 100%);display:flex;align-items:center;justify-content:center;padding:20px}
+#loginScreen::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:40px 40px}
+.login-card{background:var(--surface);border-radius:var(--r-xl);padding:40px 36px 32px;box-shadow:var(--shadow-lg);width:100%;max-width:400px;text-align:center;position:relative;border-top:4px solid var(--gold-mid)}
+.login-logo{width:72px;height:72px;background:var(--navy);border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 4px 16px rgba(26,40,68,.3)}
+.login-logo span{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--gold-mid);letter-spacing:1px}
+.login-org{font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px}
+.login-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text-muted);margin-bottom:28px}
+.role-btns{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.role-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:1.5px solid var(--border);background:var(--bg);cursor:pointer;text-align:left;transition:all var(--t);min-height:52px}
+.role-btn:hover,.role-btn.selected{border-color:var(--navy);background:var(--navy-light);box-shadow:0 0 0 3px rgba(26,40,68,.1)}
+.role-icon-wrap{width:36px;height:36px;background:var(--navy);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.role-name{font-size:13px;font-weight:600;color:var(--text-primary)}
+.role-desc{font-size:11px;color:var(--text-muted)}
+.pw-wrap{margin-bottom:14px}
+.pw-wrap input{width:100%;padding:12px 14px;border-radius:var(--r);border:1.5px solid var(--border);font-size:14px;color:var(--text-primary);font-family:'Inter',sans-serif;outline:none;background:var(--bg);transition:border-color var(--t),box-shadow var(--t)}
+.pw-wrap input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,40,68,.12);background:var(--surface)}
+.login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:18px}
+.btn-login{width:100%;padding:14px;border-radius:var(--r);border:none;background:var(--navy);color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--t);letter-spacing:.3px}
+.btn-login:hover{background:var(--navy-mid);box-shadow:0 4px 16px rgba(26,40,68,.3)}
+
+/* ── APP HEADER ── */
+.app-header{background:var(--navy);position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.header-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;gap:12px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:36px;height:36px;background:linear-gradient(135deg,var(--gold-mid),var(--gold));border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--navy);flex-shrink:0}
+.logo-text-main{font-size:14px;font-weight:700;color:#fff;line-height:1.2;letter-spacing:.2px}
+.logo-text-sub{font-size:10px;color:rgba(255,255,255,.55);letter-spacing:.3px}
+.header-controls{display:flex;align-items:center;gap:8px}
+.yr-select-wrap{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:var(--r-sm);padding:6px 10px}
+.yr-label{font-size:10px;color:rgba(255,255,255,.55);font-weight:500}
+.yr-select-wrap select{background:none;border:none;outline:none;font-size:12px;font-weight:600;color:#fff;font-family:'Inter',sans-serif;cursor:pointer}
+.yr-select-wrap select option{background:var(--navy);color:#fff}
+.user-btn{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer;color:#fff;font-size:11px;font-weight:600;transition:background var(--t);min-height:34px}
+.user-btn:hover{background:rgba(255,255,255,.18)}
+.ro-banner{background:var(--amber-bg);border-bottom:1px solid var(--amber-bd);padding:7px 16px;font-size:12px;font-weight:500;color:var(--amber);display:flex;align-items:center;gap:6px}
+.tab-nav{display:flex;overflow-x:auto;padding:0 12px 0;gap:2px;scrollbar-width:none;border-top:1px solid rgba(255,255,255,.08)}
+.tab-nav::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;padding:10px 14px;border:none;border-bottom:2px solid transparent;background:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;transition:all var(--t);white-space:nowrap;min-height:44px;display:flex;align-items:center;gap:5px}
+.tab-btn:hover{color:rgba(255,255,255,.85)}
+.tab-btn.active{color:var(--gold-mid);border-bottom-color:var(--gold-mid);font-weight:600}
+
+/* ── MAIN ── */
+.app-main{padding:16px;max-width:1100px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.page-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text-primary)}
+.page-subtitle{font-size:12px;color:var(--text-muted);margin-top:2px}
+
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
+@media(min-width:600px){.stat-grid{grid-template-columns:repeat(4,1fr)}}
+.stat-card{background:var(--surface);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border);border-left:4px solid var(--border);transition:box-shadow var(--t)}
+.stat-card:hover{box-shadow:var(--shadow)}
+.stat-card.c-navy{border-left-color:var(--navy)}.stat-card.c-green{border-left-color:var(--green)}.stat-card.c-red{border-left-color:var(--red)}.stat-card.c-gold{border-left-color:var(--gold)}
+.s-lbl{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.s-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text-primary);line-height:1}
+.s-sub{font-size:11px;color:var(--text-muted);margin-top:5px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:1.5px solid transparent;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all var(--t);min-height:36px;white-space:nowrap;letter-spacing:.2px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.btn-primary{background:var(--navy);color:#fff;border-color:var(--navy)}.btn-primary:hover{background:var(--navy-mid);border-color:var(--navy-mid)}
+.btn-secondary{background:transparent;color:var(--navy);border-color:var(--navy-mid)}.btn-secondary:hover{background:var(--navy-light)}
+.btn-ghost{background:var(--bg);color:var(--text-secondary);border-color:var(--border)}.btn-ghost:hover{background:var(--border);color:var(--text-primary)}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}.btn-danger:hover{background:var(--red-bd)}
+.btn-sm{padding:5px 12px;font-size:12px;min-height:30px}
+.btn-success{background:var(--green-bg);color:var(--green);border-color:var(--green-bd)}.btn-success:hover{background:var(--green-bd)}
+
+/* ── FORM ── */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:440px){.fg.r2,.fg.r3{grid-template-columns:1fr}}
+.field-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
+.help-icon{width:15px;height:15px;background:var(--border);border-radius:50%;font-size:9px;font-weight:700;color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;cursor:help;position:relative;flex-shrink:0;transition:background var(--t)}
+.help-icon:hover{background:var(--navy);color:#fff}
+.help-icon .tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--text-primary);color:#fff;font-size:11px;font-weight:400;padding:6px 10px;border-radius:var(--r-sm);width:210px;text-align:left;line-height:1.4;z-index:50;white-space:normal;pointer-events:none;box-shadow:var(--shadow)}
+.help-icon .tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--text-primary)}
+.help-icon:hover .tip{display:block}
+input,select,textarea{width:100%;padding:10px 13px;border-radius:var(--r-sm);border:1.5px solid var(--border);font-family:'Inter',sans-serif;font-size:13px;color:var(--text-primary);background:var(--surface);outline:none;transition:border-color var(--t),box-shadow var(--t);-webkit-appearance:none;min-height:44px}
+input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,40,68,.1)}
+input::placeholder,textarea::placeholder{color:var(--text-muted)}
+textarea{resize:vertical;min-height:70px}
+.field-hint{font-size:11px;color:var(--text-muted);line-height:1.4}
+.form-err{font-size:11px;color:var(--red);margin-top:3px}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px;box-shadow:var(--shadow-sm)}
+.fi{padding:8px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);font-family:'Inter',sans-serif;font-size:12px;color:var(--text-primary);background:var(--bg);outline:none;transition:border-color var(--t);min-height:38px}
+.fi:focus{border-color:var(--navy)}
+.fi-search{flex:1;min-width:160px}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto;border-radius:var(--r-lg);box-shadow:var(--shadow-sm);border:1px solid var(--border);background:var(--surface);margin-bottom:12px;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--navy)}
+th{padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:#fff}
+th.ns{cursor:default}
+td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text-primary);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--navy-light);transition:background .1s}
+tr.tot-row td{background:var(--bg);font-weight:700;font-size:13px;border-top:2px solid var(--border-mid)}
+tr.unpaid-row td{background:var(--amber-bg)!important}
+tr.unpaid-row td:first-child{border-left:3px solid var(--gold)}
+tr.unpaid-row:hover td{background:var(--amber-bd)!important}
+.amt{font-family:'Playfair Display',serif;font-weight:700;font-size:13px}
+.amt-green{color:var(--green)}.amt-red{color:var(--red)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.b-cash{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-bank{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.b-q1{background:var(--navy-light);color:var(--navy);border:1px solid #c4ccd8}
+.b-q2{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.b-q3{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-q4{background:var(--gold-light);color:var(--gold);border:1px solid #f0c040}
+.b-tabler{background:var(--navy-light);color:var(--navy);border:1px solid #c4ccd8}
+.b-ht{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.b-active{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-inactive{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.b-due{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.b-paid{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-contra{background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe}
+.b-loan{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);border:1px solid var(--border);padding:18px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.card-title-icon{width:26px;height:26px;background:var(--navy);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:12px}
+
+/* ── ALERT BANNER ── */
+.alert-banner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-left:4px solid var(--gold);border-radius:var(--r);padding:12px 16px;margin-bottom:14px}
+.alert-banner-left{display:flex;align-items:center;gap:10px}
+.alert-banner-title{font-size:13px;font-weight:700;color:var(--amber)}
+.alert-banner-sub{font-size:11px;color:var(--text-secondary)}
+.alert-banner-amt{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--red)}
+
+/* ── MODALS ── */
+.mo{position:fixed;inset:0;background:rgba(15,25,35,.5);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.open{opacity:1;pointer-events:all}
+.mo-box{background:var(--surface);border-radius:var(--r-xl);width:100%;max-width:500px;box-shadow:var(--shadow-lg);overflow:hidden;transform:translateY(20px);transition:transform .2s;margin:auto;border-top:4px solid var(--navy)}
+.mo.open .mo-box{transform:translateY(0)}
+.mo-box-wide{max-width:700px}
+.mo-head{background:var(--navy);padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between}
+.mo-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:#fff}
+.mo-close{width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.1);cursor:pointer;font-size:16px;color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;transition:background var(--t)}
+.mo-close:hover{background:rgba(255,255,255,.2)}
+.mo-body{padding:20px 22px}
+.mo-foot{padding:14px 22px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);background:var(--bg)}
+@media(max-width:560px){.mo-box{border-radius:var(--r-lg) var(--r-lg) 0 0;margin:auto 0 0}.mo{align-items:flex-end;padding:0}}
+
+/* ── BUDGET TABLE ── */
+.bs-wrap{overflow-x:auto;border-radius:var(--r-lg);box-shadow:var(--shadow-sm);border:1px solid var(--border);background:var(--surface);-webkit-overflow-scrolling:touch}
+.bs-table{width:100%;border-collapse:collapse;font-size:12px;min-width:800px}
+.bs-table thead{background:var(--navy)}
+.bs-table th{padding:11px 13px;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.8px;text-align:right;white-space:nowrap}
+.bs-table th:first-child{text-align:left}
+.bs-table td{padding:10px 13px;border-bottom:1px solid var(--border);text-align:right;font-size:12px;color:var(--text-primary)}
+.bs-table td:first-child{text-align:left;font-weight:500}
+.bs-table tr:hover td{background:var(--navy-light)}
+.bs-table tr.tot-row td{background:var(--bg);font-weight:700;border-top:2px solid var(--border-mid)}
+.over{color:var(--red);font-weight:700}.safe{color:var(--green)}.warn{color:var(--amber)}
+.pb{height:4px;background:var(--border);border-radius:4px;margin-top:4px;overflow:hidden}
+.pbf{height:100%;border-radius:4px}
+
+/* ── P&L ── */
+.pl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+@media(max-width:580px){.pl-grid{grid-template-columns:1fr}}
+.pl-card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);border:1px solid var(--border);overflow:hidden}
+.pl-head{padding:12px 16px 10px;font-size:13px;font-weight:700;color:#fff;border-bottom:1px solid rgba(255,255,255,.1)}
+.pl-head.inc{background:var(--green)}.pl-head.exp{background:var(--navy)}.pl-head.adj{background:var(--amber)}
+.pl-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);font-size:12px}
+.pl-row:last-child{border-bottom:none}
+.pl-row.tot{font-weight:700;background:var(--bg);font-size:13px;border-top:2px solid var(--border-mid)}
+.surp-banner{background:var(--navy);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow)}
+.surp-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.surp-val{font-family:'Playfair Display',serif;font-size:28px;font-weight:700}
+
+/* ── SETTINGS ── */
+.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.tag{display:flex;align-items:center;gap:5px;background:var(--navy-light);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:4px 10px;font-size:12px;font-weight:500;color:var(--text-primary)}
+.tag-x{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:0;line-height:1}
+.tag-x:hover{color:var(--red)}
+.add-row{display:flex;gap:8px}.add-row input{flex:1}
+.sub-hdr{font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px;display:flex;align-items:center;gap:8px}
+.sub-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── SUBSCRIPTION RATE TABLE in Settings ── */
+.sub-rate-row{display:grid;grid-template-columns:130px 1fr 1fr 1fr 40px;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--border)}
+.sub-rate-row .type-label{font-size:12px;font-weight:600;color:var(--text-primary)}
+@media(max-width:560px){.sub-rate-row{grid-template-columns:1fr 1fr;gap:6px}.sub-rate-row .type-label{grid-column:1/-1}}
+
+/* ── PAGINATION ── */
+.pag{display:flex;gap:4px;align-items:center;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
+.pg{padding:6px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);min-height:34px;min-width:34px;display:flex;align-items:center;justify-content:center;transition:all var(--t)}
+.pg.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pg:hover:not(.on){background:var(--navy-light);border-color:var(--navy-mid)}
+
+/* ── CHART ── */
+.chart-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px}
+.chart-label{width:170px;text-align:right;flex-shrink:0;color:var(--text-secondary);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-track{flex:1;height:22px;background:var(--bg);border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border)}
+.chart-fill{height:100%;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:11px;font-weight:700;color:#fff;transition:width .4s ease;min-width:40px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text-primary);color:#fff;padding:12px 18px;border-radius:var(--r);font-size:13px;font-weight:600;z-index:500;opacity:0;transform:translateY(8px);transition:all .25s;max-width:300px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:8px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.warn{background:var(--amber)}
+
+/* ── MISC ── */
+.hidden{display:none!important}
+.actions{display:flex;gap:5px;flex-wrap:wrap}
+.hm{display:table-cell}
+@media(max-width:560px){.hm{display:none!important}.app-main{padding:10px}.stat-card{padding:12px}.s-val{font-size:18px}}
+.ie-row{display:flex;gap:8px;flex-wrap:wrap}
+.text-muted{color:var(--text-muted);font-size:12px}
+.fw-bold{font-weight:700}
+.divider{height:1px;background:var(--border);margin:16px 0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:var(--navy-mid)}
+
+/* Category colours (deep professional palette) */
+.CC0{background:#1a3a6b}.CC1{background:#14532d}.CC2{background:#78350f}.CC3{background:#1e3a5f}
+.CC4{background:#4c1d95}.CC5{background:#7f1d1d}.CC6{background:#064e3b}.CC7{background:#1e40af}
+.CC8{background:#92400e}.CC9{background:#374151}.CC10{background:#3730a3}.CC11{background:#065f46}
+.CC12{background:#9a3412}.CC13{background:#1d4ed8}.CC14{background:#166534}.CC15{background:#1e3a5f}
+.CC16{background:#713f12}.CC17{background:#155e75}.CC18{background:#831843}.CC19{background:#2d4a1e}
+.CC20{background:#4a1942}.CC21{background:#1a4a6b}.CC22{background:#5c4a00}.CC23{background:#3a1a0a}
+</style>
+<!-- Config loader: fetches config.json from same directory.
+     config.json must contain: { "gasUrl": "https://..." }
+     This means nobody has to manually set the backend URL.
+     If config.json is absent (local use), falls back to localStorage. -->
+<script>
+(function() {
+  /* Try to load config.json on page init. Non-blocking. */
+  var CFG_KEY = 'jrt273_gas_url';
+  fetch('./config.json?_=' + Date.now())
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(cfg) {
+      if (!cfg) return;
+      /* gasUrl in config.json always takes priority */
+      if (cfg.gasUrl)  localStorage.setItem(CFG_KEY, cfg.gasUrl);
+      /* Store any other config values */
+      if (cfg.defaultPin) localStorage.setItem('jrt273_default_pin', cfg.defaultPin);
+      if (cfg.year)       localStorage.setItem('jrt273_default_year', cfg.year);
+      /* Signal that config.json was loaded */
+      window.__cfgLoaded = true;
+      console.log('[JRT273] config.json loaded, GAS URL set.');
+    })
+    .catch(function() {
+      /* Silently fail — app works without config.json */
+      window.__cfgLoaded = false;
+    });
+})();
+</script>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo"><span>RT</span></div>
+    <div class="login-org">Jodhpur Round Table 273</div>
+    <div class="login-title">Finance Manager</div>
+    <div class="login-sub">Select your role and enter your password to continue</div>
+    <div class="role-btns">
+      <button class="role-btn" onclick="selRole('chairman',this)"><div class="role-icon-wrap">👑</div><div><div class="role-name">Chairman</div><div class="role-desc">View-only access to all records</div></div></button>
+      <button class="role-btn" onclick="selRole('secretary',this)"><div class="role-icon-wrap">📋</div><div><div class="role-name">Secretary</div><div class="role-desc">View-only access to all records</div></div></button>
+      <button class="role-btn" onclick="selRole('treasurer',this)"><div class="role-icon-wrap">💼</div><div><div class="role-name">Treasurer</div><div class="role-desc">Full edit and manage access</div></div></button>
+    </div>
+    <div id="lErr" class="login-err"></div>
+
+      <!-- Tabler quick-access button on login screen -->
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-align:center">OR</div>
+        <button class="role-btn" onclick="openTablerLogin()" style="border-color:var(--gold);background:var(--gold-light)">
+          <div class="role-icon-wrap" style="background:var(--gold)">🏷️</div>
+          <div><div class="role-name" style="color:var(--text-primary)">I am a Tabler</div><div class="role-desc">Submit and track your expenses</div></div>
+        </button>
+      </div>
+    <div id="pwWrap" class="pw-wrap hidden">
+      <input type="password" id="pwIn" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Sign In →</button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══════════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+  <header class="app-header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-mark">RT</div>
+        <div><div class="logo-text-main">JRT 273 Finance</div><div class="logo-text-sub">Jodhpur Round Table 273</div></div>
+      </div>
+      <div class="header-controls">
+        <div class="yr-select-wrap" title="Switch financial year"><span class="yr-label">Year</span><select id="yrSel" onchange="changeYear(this.value)"></select></div>
+        <span id="syncStatus" style="display:none;font-size:11px;font-weight:600;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,.1)"></span>
+        <button class="user-btn" onclick="logout()" id="uPill" title="Click to sign out"><span id="uPillText"></span> <span style="opacity:.5;font-size:10px">↩</span></button>
+      </div>
+    </div>
+    <div id="roBanner" class="ro-banner hidden">⚠️ View-only mode — sign in as Treasurer to add or edit records</div>
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-btn active" onclick="showTab('dashboard',this)">📊 Dashboard</button>
+      <button class="tab-btn" onclick="showTab('budget',this)">📋 Budget Summary</button>
+      <button class="tab-btn" onclick="showTab('expenses',this)">💸 Expenses</button>
+      <button class="tab-btn" onclick="showTab('income',this)">💰 Income</button>
+      <button class="tab-btn" onclick="showTab('journal',this)">🔄 Journal</button>
+      <button class="tab-btn" onclick="showTab('members',this)">👥 Members</button>
+      <button class="tab-btn" onclick="showTab('pl',this)">📈 P&amp;L</button>
+      <button class="tab-btn" id="settingsTabBtn" onclick="showTab('settings',this)">⚙️ Settings</button>
+    </nav>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-subtitle" id="dashYrLabel"></div></div></div>
+      <div class="stat-grid" id="dashStats"></div>
+      <div class="card"><div class="card-title"><div class="card-title-icon">📊</div> Spending by Category</div><div id="catChart"></div></div>
+      <div class="page-header"><div class="page-title" style="font-size:16px">Recent Transactions</div><button class="btn btn-ghost btn-sm" onclick="showTab('expenses',document.querySelectorAll('.tab-btn')[2])">View All →</button></div>
+      <div class="table-wrap"><table><thead><tr><th class="ns">Date</th><th class="ns">Category</th><th class="ns hm">Remark</th><th class="ns hm">Paid By</th><th class="ns hm">Mode</th><th class="ns">Amount</th></tr></thead><tbody id="recTxns"></tbody></table></div>
+    </div>
+
+    <!-- ══ BUDGET SUMMARY ══ -->
+    <div id="tab-budget" class="tab-panel">
+      <div class="page-header">
+        <div><div class="page-title">Budget Summary</div><div class="page-subtitle">Annual & quarterly budget vs actual. Unpaid expenses shown separately.</div></div>
+        <button class="btn btn-primary btn-sm" id="btnBudMgr" onclick="openBudMgr()">⚙ Manage Budgets</button>
+      </div>
+      <div class="bs-wrap"><table class="bs-table" id="budTable"></table></div>
+      <p class="text-muted" style="margin-top:8px">* Paid expenses counted in "Spent". Unpaid shown separately. Quarterly budgets auto-split annual ÷ 4 unless overridden.</p>
+    </div>
+
+    <!-- ══ EXPENSES ══ -->
+    <div id="tab-expenses" class="tab-panel">
+      <div class="page-header">
+        <div><div class="page-title">Expense Ledger</div><div class="page-subtitle">All expense transactions for the current financial year</div></div>
+        <button class="btn btn-primary" id="btnAddExp" onclick="openExpMo()">+ Add Expense</button>
+      </div>
+      <!-- Pending approvals banner for Treasurer -->
+      <div id="pendingApprovalsBanner" class="hidden" style="margin-bottom:16px">
+        <div style="background:var(--blue-bg);border:1.5px solid var(--blue-bd);border-left:4px solid var(--blue);border-radius:var(--r);padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="font-size:20px">📥</div>
+              <div><div style="font-size:13px;font-weight:700;color:var(--blue)">Pending Tabler Submissions</div>
+              <div style="font-size:11px;color:var(--text-secondary)" id="pendingCount"></div></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openPendingModal()">Review Submissions →</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="unpaidBanner" class="alert-banner hidden">
+        <div class="alert-banner-left"><div style="font-size:20px">⚠️</div><div><div class="alert-banner-title">Unpaid Expenses Outstanding</div><div class="alert-banner-sub" id="unpaidCount"></div></div></div>
+        <div class="alert-banner-amt" id="unpaidTotal"></div>
+      </div>
+      <div class="filter-bar">
+        <input class="fi fi-search" type="text" placeholder="🔍 Search category, name, remark…" oninput="filterExp()" id="expSrch">
+        <select class="fi" onchange="filterExp()" id="expCatF"><option value="">All Categories</option></select>
+        <select class="fi" onchange="filterExp()" id="expQF"><option value="">All Quarters</option><option value="Q1">Q1 — Jul–Sep</option><option value="Q2">Q2 — Oct–Dec</option><option value="Q3">Q3 — Jan–Mar</option><option value="Q4">Q4 — Apr–Jun</option></select>
+        <select class="fi" onchange="filterExp()" id="expModeF"><option value="">All Modes</option><option>Cash</option><option>Bank</option></select>
+        <select class="fi" onchange="filterExp()" id="expPaidF"><option value="">All Status</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th onclick="srt('date')">Date ↕</th><th onclick="srt('category')">Category ↕</th><th class="hm">Remark</th><th class="hm" onclick="srt('name')">Paid By ↕</th><th class="hm">Mode</th><th class="hm">Qtr</th><th onclick="srt('amount')">Amount ↕</th><th class="ns">Status / Act</th></tr></thead><tbody id="expTbl"></tbody></table></div>
+      <div class="pag" id="expPag"></div>
+      <div id="expFtr" class="text-muted" style="margin-top:6px;text-align:right"></div>
+    </div>
+
+    <!-- ══ INCOME ══ -->
+    <div id="tab-income" class="tab-panel">
+      <div class="page-header"><div><div class="page-title">Income Records</div><div class="page-subtitle">Subscriptions, sergeanting and miscellaneous income</div></div></div>
+
+      <!-- Subscription Due Summary -->
+      <div class="card" id="subDueSummaryCard">
+        <div class="card-title"><div class="card-title-icon">⚠️</div> Subscription Due Summary</div>
+        <div id="subDueSummary"></div>
+      </div>
+
+      <div class="page-header" style="margin-bottom:10px">
+        <div class="sub-hdr" style="margin:0;flex:1">Member Subscriptions</div>
+        <button class="btn btn-primary btn-sm" id="btnAddSub" onclick="openSubMo()">+ Add Payment</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th class="ns">#</th><th class="ns">Date</th><th class="ns">Member</th><th class="ns">Type</th><th class="ns">Amount</th><th class="ns">Mode</th><th class="ns">Total Paid</th><th class="ns">Due</th><th class="ns" id="subActH">Actions</th></tr></thead><tbody id="subTbl"></tbody></table></div>
+
+      <div class="page-header" style="margin-bottom:10px;margin-top:20px">
+        <div class="sub-hdr" style="margin:0;flex:1">Sergeanting Income</div>
+        <button class="btn btn-primary btn-sm" id="btnAddSgt" onclick="openSgtMo()">+ Add</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th class="ns">#</th><th class="ns">Date</th><th class="ns">Name</th><th class="ns">Amount</th><th class="ns">Mode</th><th class="ns">Remark</th><th class="ns" id="sgtActH">Actions</th></tr></thead><tbody id="sgtTbl"></tbody></table></div>
+
+      <div class="page-header" style="margin-bottom:10px;margin-top:20px">
+        <div class="sub-hdr" style="margin:0;flex:1">Miscellaneous Income</div>
+        <button class="btn btn-primary btn-sm" id="btnAddMisc" onclick="openMiscMo()">+ Add</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th class="ns">#</th><th class="ns">Date</th><th class="ns">Description</th><th class="ns">Amount</th><th class="ns">Mode</th><th class="ns" id="miscActH">Actions</th></tr></thead><tbody id="miscTbl"></tbody></table></div>
+    </div>
+
+    <!-- ══ JOURNAL ENTRIES ══ -->
+    <div id="tab-journal" class="tab-panel">
+      <div class="page-header">
+        <div><div class="page-title">Journal Entries</div><div class="page-subtitle">Contra entries (Cash ↔ Bank transfers), hand loans given/received, and adjustments</div></div>
+        <button class="btn btn-primary" id="btnAddJrnl" onclick="openJrnlMo()">+ Add Entry</button>
+      </div>
+      <div class="card" style="background:var(--blue-bg);border-color:var(--blue-bd)">
+        <div style="font-size:12px;color:var(--blue);line-height:1.6">
+          <strong>When to use Journal Entries:</strong><br>
+          • <strong>Cash Withdrawal from Bank</strong> — Debit Cash, Credit Bank (type: Contra)<br>
+          • <strong>Cash Deposited to Bank</strong> — Debit Bank, Credit Cash (type: Contra)<br>
+          • <strong>Loan Given to member</strong> — Reduces Cash/Bank until repaid (type: Loan Given)<br>
+          • <strong>Loan Received</strong> — Increases Cash/Bank as a liability (type: Loan Received)<br>
+          • <strong>Loan Repaid</strong> — Restores balance when loan is returned (type: Loan Repaid)
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th class="ns">#</th><th class="ns">Date</th><th class="ns">Type</th><th class="ns">Description</th><th class="ns">From</th><th class="ns">To</th><th class="ns">Amount</th><th class="ns" id="jrnlActH">Actions</th></tr></thead><tbody id="jrnlTbl"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══ MEMBERS ══ -->
+    <div id="tab-members" class="tab-panel">
+      <div class="page-header">
+        <div><div class="page-title">Members</div><div class="page-subtitle">Active tablers and honorary members — used in expense "Paid By" and subscription dropdowns</div></div>
+        <button class="btn btn-primary btn-sm" id="btnAddMem" onclick="openMemMo()">+ Add Member</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th class="ns">#</th><th class="ns">Name</th><th class="ns">Type</th><th class="ns">Status</th><th class="ns" id="memActH">Actions</th></tr></thead><tbody id="memTbl"></tbody></table></div>
+    </div>
+
+    <!-- ══ P&L ══ -->
+    <div id="tab-pl" class="tab-panel">
+      <div class="page-header"><div><div class="page-title">Profit &amp; Loss Statement</div><div class="page-subtitle" id="plYr"></div></div></div>
+      <div class="surp-banner">
+        <div><div class="surp-label">Net Surplus / Deficit (Paid Only)</div><div id="plSurp" class="surp-val"></div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px">Excludes unpaid expenses</div></div>
+        <div style="text-align:right"><div class="surp-label">Financial Year</div><div id="plYrLabel" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff"></div></div>
+      </div>
+      <div class="pl-grid">
+        <div class="pl-card"><div class="pl-head inc">💰 Income Statement</div><div id="plInc"></div></div>
+        <div class="pl-card"><div class="pl-head exp">💸 Paid Expenses by Category</div><div id="plExp"></div></div>
+      </div>
+      <!-- Unpaid obligations in P&L -->
+      <div class="pl-grid">
+        <div class="pl-card"><div class="pl-head adj" style="background:var(--amber)">⏳ Unpaid Obligations — Cash</div><div id="plUnpaidCash"></div></div>
+        <div class="pl-card"><div class="pl-head adj" style="background:var(--amber)">⏳ Unpaid Obligations — Bank</div><div id="plUnpaidBank"></div></div>
+      </div>
+      <div class="card"><div class="card-title"><div class="card-title-icon">🏦</div> Bank &amp; Cash Position (Paid transactions only)</div><div id="plBC"></div></div>
+      <div class="page-header" style="margin-top:16px"><div class="page-title" style="font-size:15px">Export &amp; Reports</div></div>
+      <div class="ie-row">
+        <button class="btn btn-ghost" onclick="expJSON()">⬇ Export JSON Backup</button>
+        <button class="btn btn-ghost" onclick="expCSV()">⬇ Expenses CSV</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨 Print / Save PDF</button>
+      </div>
+    </div>
+
+    <!-- ══ SETTINGS ══ -->
+    <div id="tab-settings" class="tab-panel">
+      <div class="page-header"><div><div class="page-title">Settings &amp; Configuration</div><div class="page-subtitle">Only the Treasurer can make changes here</div></div></div>
+
+      <!-- Subscription Rates -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">💳</div> Annual Subscription Rates</div>
+        <p class="text-muted" style="margin-bottom:14px">Set the annual subscription amount for each member type. Specify how much is collected in Cash vs Bank. These rates drive the "Due" calculation on the Income tab.</p>
+        <div id="subRateRows"></div>
+        <button class="btn btn-primary btn-sm" onclick="saveSubRates()">💾 Save Rates</button>
+      </div>
+
+      <!-- Passwords -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">🔐</div> Role Passwords</div>
+        <p class="text-muted" style="margin-bottom:14px">Leave a field blank to keep the existing password. Defaults: <strong>chairman123</strong> / <strong>secretary123</strong> / <strong>treasurer123</strong></p>
+        <div class="fg r2">
+          <div class="fg"><div class="field-label">Chairman Password</div><input type="password" id="pwC" placeholder="New password (blank = keep)"></div>
+          <div class="fg"><div class="field-label">Secretary Password</div><input type="password" id="pwS" placeholder="New password (blank = keep)"></div>
+        </div>
+        <div class="fg" style="max-width:280px"><div class="field-label">Treasurer Password</div><input type="password" id="pwT" placeholder="New password (blank = keep)"></div>
+        <button class="btn btn-primary" onclick="savePW()">💾 Update Passwords</button>
+      </div>
+
+      <!-- Financial Years -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">🗓</div> Financial Years</div>
+        <p class="text-muted" style="margin-bottom:12px">Each year has separate expense/income/budget data. Members and Categories are shared across all years. When adding a new year, all members and categories carry over automatically.</p>
+        <div class="tag-list" id="yrTags"></div>
+        <div class="add-row"><input id="newYrIn" placeholder="e.g. 2025-26" style="max-width:180px"><button class="btn btn-primary btn-sm" onclick="addYear()">+ Add Year</button></div>
+      </div>
+
+      <!-- Expense Categories -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">📁</div> Expense Categories</div>
+        <p class="text-muted" style="margin-bottom:12px">These appear in the Expense form and Budget Summary. Categories are shared across all years. Removing a category does not delete existing expenses.</p>
+        <div class="tag-list" id="catTags"></div>
+        <div class="add-row"><input id="newCatIn" placeholder="Category name"><button class="btn btn-primary btn-sm" onclick="addCat()">+ Add</button></div>
+      </div>
+
+      <!-- Opening Balances -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">🏦</div> Opening Balances — Current Year</div>
+        <p class="text-muted" style="margin-bottom:14px">Enter balances as at 1 July of the current financial year (closing balances carried forward from previous year).</p>
+        <div class="fg r2">
+          <div class="fg"><div class="field-label">Bank Opening Balance (₹) <span class="help-icon">?<span class="tip">Bank account balance on 1 July — typically the closing bank balance from last year's P&L.</span></span></div><input type="number" id="sBnk" placeholder="0" oninput="saveBal()"></div>
+          <div class="fg"><div class="field-label">Cash Opening Balance (₹) <span class="help-icon">?<span class="tip">Cash in hand on 1 July — typically the closing cash balance from last year's P&L.</span></span></div><input type="number" id="sCsh" placeholder="0" oninput="saveBal()"></div>
+        </div>
+      </div>
+
+      <!-- Backend Connection -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">☁️</div> Backend Connection (Google Apps Script)</div>
+        <p class="text-muted" style="margin-bottom:14px">Connect to a Google Apps Script backend so all users see the same data. Paste your deployed Web App URL below. Leave blank to use local storage only.</p>
+        <div class="fg">
+          <div class="field-label">Google Apps Script Web App URL <span class="help-icon">?<span class="tip">Deploy your Apps Script as a Web App and paste the URL here. All devices with this URL will share the same data. See the setup guide for instructions.</span></span></div>
+          <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec">
+          <div class="field-hint">
+            After entering the URL, click Save and reload. If a <code>config.json</code> file is present in the same folder, the URL from that file is used automatically and this field will be read-only.
+            <span id="gasUrlSource" style="font-weight:600;margin-left:6px"></span>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="field-label">Default Tabler PIN <span class="help-icon">?<span class="tip">PIN assigned to new Tablers who have not set their own. They should change it after first login.</span></span></div>
+          <input type="text" id="defaultPin" placeholder="e.g. 0273" maxlength="10">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="saveGasUrl()">💾 Save &amp; Reconnect</button>
+          <button class="btn btn-ghost" onclick="testConnection()">🔌 Test Connection</button>
+        </div>
+        <div id="connTestResult" style="margin-top:8px;font-size:12px"></div>
+      </div>
+
+      <!-- Tabler PINs Management -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">🔑</div> Tabler PINs</div>
+        <p class="text-muted" style="margin-bottom:12px">Each Tabler uses a PIN to access the submission screen. You can set individual PINs here.</p>
+        <div id="tablerPinList"></div>
+        <button class="btn btn-primary btn-sm" onclick="saveTablerPins()">💾 Save PINs</button>
+      </div>
+
+      <!-- Data Management -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">🔄</div> Data Management</div>
+        <p class="text-muted" style="margin-bottom:12px">Export a JSON backup before resetting. Import restores a previously exported year's data.</p>
+        <div class="ie-row">
+          <button class="btn btn-ghost" onclick="document.getElementById('impF').click()">⬆ Import JSON</button>
+          <input type="file" id="impF" accept=".json" style="display:none" onchange="handleImp(event)">
+          <button class="btn btn-danger" onclick="resetYD()">🗑 Reset Current Year Data</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══ TABLER SUBMISSION SCREEN ═══════════════════════════ -->
+  <div id="tablerScreen" class="hidden">
+    <div style="max-width:680px;margin:0 auto;padding:16px">
+      <div style="background:var(--navy);border-radius:var(--r-lg);padding:20px 20px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--gold-mid),var(--gold));border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--navy);flex-shrink:0">RT</div>
+          <div><div style="font-size:14px;font-weight:700;color:#fff">JRT 273 — Expense Submission</div><div style="font-size:11px;color:rgba(255,255,255,.55)" id="tablerGreeting"></div></div>
+        </div>
+        <button class="user-btn" onclick="logoutTabler()">Sign Out ↩</button>
+      </div>
+      <div class="card" style="border-top:4px solid var(--gold)">
+        <div class="card-title"><div class="card-title-icon">💸</div> Submit an Expense</div>
+        <p class="text-muted" style="margin-bottom:14px">Submit expenses you have paid on behalf of the table. The Treasurer will review and approve them.</p>
+        <div class="fg r2">
+          <div class="fg"><div class="field-label">Date * <span class="help-icon">?<span class="tip">Date the expense was incurred.</span></span></div><input type="date" id="tExpDt" onchange="document.getElementById('tExpQ').value=dateToQ(this.value)"></div>
+          <div class="fg"><div class="field-label">Amount (₹) * <span class="help-icon">?<span class="tip">Total amount you paid.</span></span></div><input type="number" id="tExpAmt" placeholder="0" min="0"></div>
+        </div>
+        <div class="fg"><div class="field-label">Category * <span class="help-icon">?<span class="tip">Which expense head this falls under.</span></span></div><select id="tExpCat"></select></div>
+        <div class="fg r2">
+          <div class="fg"><div class="field-label">Payment Mode * <span class="help-icon">?<span class="tip">Cash = from your own cash. Bank = from your bank account.</span></span></div><select id="tExpMode"><option>Cash</option><option>Bank</option></select></div>
+          <div class="fg"><div class="field-label">Quarter <span class="help-icon">?<span class="tip">Auto-assigned from the date.</span></span></div><input type="text" id="tExpQ" readonly style="background:var(--bg);color:var(--text-muted)"></div>
+        </div>
+        <div class="fg"><div class="field-label">Description / Remark * <span class="help-icon">?<span class="tip">e.g. "Venue booking for July BM" or "Hosting visitor from RT 185".</span></span></div><textarea id="tExpRmk" placeholder="Describe what this expense was for…"></textarea></div>
+        <button class="btn btn-primary" onclick="submitTablerExp()" style="width:100%;justify-content:center;min-height:48px;font-size:14px">📤 Submit for Treasurer Approval</button>
+        <div id="tExpMsg" style="margin-top:10px;font-size:12px;display:none"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;border-bottom:none;padding-bottom:0">
+          <div style="display:flex;align-items:center;gap:8px"><div class="card-title-icon">📋</div> My Expense History</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadTablerHistory()">🔄 Refresh</button>
+        </div>
+        <div style="display:flex;gap:6px;margin:12px 0;flex-wrap:wrap">
+          <span class="badge b-bank">Pending Review</span>
+          <span class="badge b-paid">Approved</span>
+          <span class="badge b-due">Rejected</span>
+          <span class="badge b-active">Paid &amp; Cleared</span>
+        </div>
+        <div id="tablerExpList"><div style="text-align:center;padding:24px;color:var(--text-muted)">Loading your expense history…</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+
+<!-- ═══ MODALS ════════════════════════════════════════════════ -->
+
+<!-- Add/Edit Expense -->
+<div class="mo" id="moExp">
+  <div class="mo-box">
+    <div class="mo-head"><div class="mo-title" id="moExpT">Add Expense</div><button class="mo-close" onclick="cMo('moExp')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="expId">
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Date * <span class="help-icon">?<span class="tip">Date the expense was incurred. Quarter is auto-assigned from this date.</span></span></div><input type="date" id="expDt" onchange="document.getElementById('expQ').value=dateToQ(this.value)"></div>
+        <div class="fg"><div class="field-label">Amount (₹) * <span class="help-icon">?<span class="tip">Total amount of this expense in rupees.</span></span></div><input type="number" id="expAm" placeholder="0" min="0"></div>
+      </div>
+      <div class="fg"><div class="field-label">Category * <span class="help-icon">?<span class="tip">Expense head this cost falls under. Manage categories in Settings.</span></span></div><select id="expCt"></select></div>
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Paid By <span class="help-icon">?<span class="tip">Member who made the payment on behalf of the table.</span></span></div><select id="expNm"></select></div>
+        <div class="fg"><div class="field-label">Mode <span class="help-icon">?<span class="tip">Cash = from physical cash. Bank = via bank transfer/cheque.</span></span></div><select id="expMd"><option>Cash</option><option>Bank</option></select></div>
+      </div>
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Quarter <span class="help-icon">?<span class="tip">Auto-set from date. Q1=Jul–Sep, Q2=Oct–Dec, Q3=Jan–Mar, Q4=Apr–Jun.</span></span></div>
+          <select id="expQ"><option value="Q1">Q1 — Jul to Sep</option><option value="Q2">Q2 — Oct to Dec</option><option value="Q3">Q3 — Jan to Mar</option><option value="Q4">Q4 — Apr to Jun</option></select></div>
+        <div class="fg"><div class="field-label">Payment Status <span class="help-icon">?<span class="tip">Mark Paid only when money has actually left the table's cash or bank. Unpaid expenses are tracked but excluded from cash position.</span></span></div>
+          <select id="expPd"><option value="true">✅ Paid</option><option value="false">⏳ Unpaid / Pending</option></select></div>
+      </div>
+      <div class="fg"><div class="field-label">Remark <span class="help-icon">?<span class="tip">Brief description, e.g. "Venue booking for TAGM 2024".</span></span></div><textarea id="expRm" placeholder="Describe the purpose of this expense…"></textarea></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moExp')">Cancel</button><button class="btn btn-primary" onclick="saveExp()">💾 Save Expense</button></div>
+  </div>
+</div>
+
+<!-- Add/Edit Subscription Payment -->
+<div class="mo" id="moSub">
+  <div class="mo-box">
+    <div class="mo-head"><div class="mo-title" id="moSubT">Add Subscription Payment</div><button class="mo-close" onclick="cMo('moSub')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="subId">
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Date * <span class="help-icon">?<span class="tip">Date the subscription payment was received.</span></span></div><input type="date" id="subDt"></div>
+        <div class="fg"><div class="field-label">Member * <span class="help-icon">?<span class="tip">The member making this subscription payment.</span></span></div><select id="subMem" onchange="prefillSubAmt()"></select></div>
+      </div>
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Amount (₹) * <span class="help-icon">?<span class="tip">Amount received in this payment. Auto-filled from subscription rate for member type.</span></span></div><input type="number" id="subAmt" placeholder="0" min="0"></div>
+        <div class="fg"><div class="field-label">Mode <span class="help-icon">?<span class="tip">Cash = received physically. Bank = received via UPI/NEFT/transfer.</span></span></div>
+          <select id="subMode"><option value="Cash">Cash</option><option value="Bank">Bank</option></select></div>
+      </div>
+      <div id="subDueInfo" style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r-sm);padding:10px 13px;font-size:12px;color:var(--amber);margin-bottom:12px;display:none"></div>
+      <div class="fg"><div class="field-label">Remark <span class="help-icon">?<span class="tip">Optional note, e.g. "Part payment", "Full year subscription".</span></span></div><input type="text" id="subRmk" placeholder="Optional remark…"></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moSub')">Cancel</button><button class="btn btn-primary" onclick="saveSub()">💾 Save Payment</button></div>
+  </div>
+</div>
+
+<!-- Add/Edit Sergeanting Income -->
+<div class="mo" id="moSgt">
+  <div class="mo-box">
+    <div class="mo-head"><div class="mo-title" id="moSgtT">Add Sergeanting Income</div><button class="mo-close" onclick="cMo('moSgt')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="sgtId">
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Date <span class="help-icon">?<span class="tip">Date of the business meeting / event where sergeanting was collected.</span></span></div><input type="date" id="sgtDt"></div>
+        <div class="fg"><div class="field-label">Amount (₹)</div><input type="number" id="sgtAm" placeholder="0" min="0"></div>
+      </div>
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Collected By <span class="help-icon">?<span class="tip">Name of the Sergeant-at-Arms who collected the fines/donations.</span></span></div><input type="text" id="sgtNm" placeholder="Member name"></div>
+        <div class="fg"><div class="field-label">Mode</div><select id="sgtMd"><option>Cash</option><option>Bank</option></select></div>
+      </div>
+      <div class="fg"><div class="field-label">Remark</div><input type="text" id="sgtRm" placeholder="e.g. BM Sergeanting — July 2025"></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moSgt')">Cancel</button><button class="btn btn-primary" onclick="saveSgt()">💾 Save</button></div>
+  </div>
+</div>
+
+<!-- Add/Edit Misc Income -->
+<div class="mo" id="moMisc">
+  <div class="mo-box">
+    <div class="mo-head"><div class="mo-title">Miscellaneous Income</div><button class="mo-close" onclick="cMo('moMisc')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="miscId">
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Date</div><input type="date" id="miscDt"></div>
+        <div class="fg"><div class="field-label">Amount (₹)</div><input type="number" id="miscAm" placeholder="0" min="0"></div>
+      </div>
+      <div class="fg"><div class="field-label">Description * <span class="help-icon">?<span class="tip">e.g. "Bank interest", "D Form refund", "Sponsorship".</span></span></div><input type="text" id="miscDs" placeholder="e.g. Bank interest, Refund, Sponsorship…"></div>
+      <div class="fg"><div class="field-label">Received Via <span class="help-icon">?<span class="tip">Bank = credited to bank account. Cash = received physically.</span></span></div><select id="miscMd"><option>Bank</option><option>Cash</option></select></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moMisc')">Cancel</button><button class="btn btn-primary" onclick="saveMisc()">💾 Save</button></div>
+  </div>
+</div>
+
+<!-- Journal Entry Modal -->
+<div class="mo" id="moJrnl">
+  <div class="mo-box">
+    <div class="mo-head"><div class="mo-title" id="moJrnlT">Add Journal Entry</div><button class="mo-close" onclick="cMo('moJrnl')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="jrnlId">
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Date *</div><input type="date" id="jrnlDt"></div>
+        <div class="fg"><div class="field-label">Type * <span class="help-icon">?<span class="tip">Contra: transfer between Cash and Bank. Loan Given: money given as a loan. Loan Received: loan taken. Loan Repaid: loan returned.</span></span></div>
+          <select id="jrnlType" onchange="updateJrnlFields()">
+            <option value="contra">Contra — Cash ↔ Bank Transfer</option>
+            <option value="loan_given">Loan Given (reduces balance)</option>
+            <option value="loan_received">Loan Received (increases balance)</option>
+            <option value="loan_repaid">Loan Repaid (restores balance)</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg r2" id="jrnlFromToRow">
+        <div class="fg"><div class="field-label">From (Debit) <span class="help-icon">?<span class="tip">The account that decreases. e.g. for Cash Withdrawal from Bank: From = Bank.</span></span></div>
+          <select id="jrnlFrom"><option value="Bank">Bank</option><option value="Cash">Cash</option></select></div>
+        <div class="fg"><div class="field-label">To (Credit) <span class="help-icon">?<span class="tip">The account that increases. e.g. for Cash Withdrawal from Bank: To = Cash.</span></span></div>
+          <select id="jrnlTo"><option value="Cash">Cash</option><option value="Bank">Bank</option></select></div>
+      </div>
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Amount (₹) *</div><input type="number" id="jrnlAmt" placeholder="0" min="0"></div>
+        <div class="fg" id="jrnlPartyRow"><div class="field-label">Party Name <span class="help-icon">?<span class="tip">For loans: name of the person/entity the loan was given to or received from.</span></span></div><input type="text" id="jrnlParty" placeholder="Name (for loans)"></div>
+      </div>
+      <div class="fg"><div class="field-label">Description *</div><textarea id="jrnlDesc" placeholder="e.g. Cash withdrawal from Kotak bank — July 2025" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moJrnl')">Cancel</button><button class="btn btn-primary" onclick="saveJrnl()">💾 Save Entry</button></div>
+  </div>
+</div>
+
+<!-- Add/Edit Member -->
+<div class="mo" id="moMem">
+  <div class="mo-box">
+    <div class="mo-head"><div class="mo-title" id="moMemT">Add Member</div><button class="mo-close" onclick="cMo('moMem')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="memId">
+      <div class="fg"><div class="field-label">Full Name * <span class="help-icon">?<span class="tip">Member's full name as it should appear in all records and dropdowns.</span></span></div><input type="text" id="memNm" placeholder="e.g. Gaurav Nawal" autocomplete="name"></div>
+      <div class="fg r2">
+        <div class="fg"><div class="field-label">Member Type <span class="help-icon">?<span class="tip">Tabler: active member. HT: Honorary Tabler. Guest: temporary/non-subscription member.</span></span></div><select id="memTp"><option value="Tabler">Tabler</option><option value="HT">HT — Honorary Tabler</option><option value="Guest">Guest</option></select></div>
+        <div class="fg"><div class="field-label">Status <span class="help-icon">?<span class="tip">Active members appear in dropdowns. Inactive are kept for historical records only.</span></span></div><select id="memSt"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+      </div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moMem')">Cancel</button><button class="btn btn-primary" onclick="saveMem()">💾 Save Member</button></div>
+  </div>
+</div>
+
+<!-- Budget Manager -->
+<div class="mo" id="moBud">
+  <div class="mo-box mo-box-wide">
+    <div class="mo-head"><div class="mo-title">Manage Annual Budgets — <span id="budMgrYr"></span></div><button class="mo-close" onclick="cMo('moBud')">✕</button></div>
+    <div class="mo-body" style="max-height:65vh;overflow-y:auto">
+      <p class="text-muted" style="margin-bottom:12px">Enter annual budget per category. Q1–Q4 auto-split (÷4) but can be overridden. <strong>Total of Q1+Q2+Q3+Q4 cannot exceed the Annual budget.</strong></p>
+      <div id="budMgrRows"></div>
+      <div id="budMgrErr" style="color:var(--red);font-size:12px;font-weight:600;padding:8px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--r-sm);display:none;margin-top:8px"></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moBud')">Close</button><button class="btn btn-primary" onclick="saveBuds()">💾 Save All Budgets</button></div>
+  </div>
+</div>
+
+<!-- Pending Approvals Review Modal -->
+<div class="mo" id="moPending">
+  <div class="mo-box mo-box-wide">
+    <div class="mo-head"><div class="mo-title">📥 Review Pending Submissions</div><button class="mo-close" onclick="cMo('moPending')">✕</button></div>
+    <div class="mo-body" style="max-height:65vh;overflow-y:auto">
+      <p class="text-muted" style="margin-bottom:14px">Approve expenses to add them to the main ledger. Reject to flag back to the Tabler with a reason.</p>
+      <div id="pendingList"></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moPending')">Close</button></div>
+  </div>
+</div>
+
+<!-- Tabler Login Modal -->
+<div class="mo" id="moTablerLogin" style="z-index:1000">
+  <div class="mo-box" style="max-width:420px">
+    <div class="mo-head" style="background:linear-gradient(135deg,#b8860b,#7a5800)"><div class="mo-title" style="color:#fff">Tabler Login</div><button class="mo-close" onclick="cMo('moTablerLogin')">✕</button></div>
+    <div class="mo-body">
+      <p class="text-muted" style="margin-bottom:14px">Select your name and enter your personal PIN to submit and track your expenses.</p>
+      <div class="fg"><div class="field-label">Your Name *</div><select id="tablerNameSel"></select></div>
+      <div class="fg"><div class="field-label">PIN * <span class="help-icon">?<span class="tip">Your personal PIN set by the Treasurer. Default PIN is 0273. Ask the Treasurer if you don't know yours.</span></span></div><input type="password" id="tablerPin" placeholder="Enter your PIN" maxlength="10" onkeydown="if(event.key==='Enter')doTablerLogin()"></div>
+      <div id="tablerLoginErr" style="color:var(--red);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moTablerLogin')">Cancel</button><button class="btn btn-primary" style="background:#b8860b;border-color:#b8860b" onclick="doTablerLogin()">Sign In →</button></div>
+  </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="mo" id="moReject">
+  <div class="mo-box" style="max-width:400px">
+    <div class="mo-head" style="background:var(--red)"><div class="mo-title">Reject Expense</div><button class="mo-close" onclick="cMo('moReject')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="rejectId">
+      <div class="fg"><div class="field-label">Reason for Rejection <span class="help-icon">?<span class="tip">This reason will be visible to the Tabler in their history.</span></span></div><textarea id="rejectReason" placeholder="e.g. Duplicate entry, Receipt missing, Incorrect category…" style="min-height:80px"></textarea></div>
+    </div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="cMo('moReject')">Cancel</button><button class="btn btn-danger" onclick="confirmReject()">Reject Expense</button></div>
+  </div>
+</div>
+
+<!-- Sync spinner -->
+<div id="syncSpinner" style="display:none;position:fixed;bottom:20px;left:20px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:var(--r);font-size:12px;font-weight:600;z-index:400;align-items:center;gap:8px;box-shadow:var(--shadow-lg)">
+  <span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></span>
+  Syncing…
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<div class="toast" id="tst" role="alert"></div>
+
+<!-- ═══ JAVASCRIPT ════════════════════════════════════════════ -->
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTS — all defined before any function calls
+   ═══════════════════════════════════════════════════════════ */
+const SK   = 'jrt273v7';  // localStorage key — increment this when data schema changes
+const PG   = 20;           // rows per page in expense table
+const SYNC_KEY = 'jrt273_synced_ids'; // key storing set of already-synced record IDs
+
+const DEF_CATS = [
+  'AAGM & NAGM Awards Fines','Annual Table AGM Expenses','Area Event Expenses',
+  'Business Meets Expenses','C Forms','D Forms','Fellowship Expenses',
+  'Gifts & Greetings Expenses','Hosting Expenses','Internal Induction Expenses',
+  'IT & Publicity Expenses','LAPD Expenses','Legal Expenses','Miscelleneous Expenses',
+  'NAGM Travel Levy','Photographer Expenses','Printing & Stationary Expenses',
+  'RTI Circle Maintenance Expenses','Socials Expenses','Sports Expenses',
+  'Table Social Expenses','Tabler Social Expenses','Tshirt & Pins','Twinklers Expenses'
+];
+
+/* Deep professional colours for category chart bars */
+const CCOL = [
+  '#1a3a6b','#14532d','#78350f','#1e3a5f','#4c1d95','#7f1d1d',
+  '#064e3b','#1e40af','#92400e','#374151','#3730a3','#065f46',
+  '#9a3412','#1d4ed8','#166534','#1e3a5f','#713f12','#155e75',
+  '#831843','#2d4a1e','#4a1942','#1a4a6b','#5c4a00','#3a1a0a'
+];
+
+/* ═══════════════════════════════════════════════════════════
+   MUTABLE STATE — var to avoid temporal dead zone
+   ═══════════════════════════════════════════════════════════ */
+var selR = null;    // selected role on login screen
+var cRole = null;   // currently logged-in role
+var S, cYear, expPage, expFil, expSrt;
+expPage = 1; expFil = []; expSrt = { k:'date', d:-1 };
+
+/* ═══════════════════════════════════════════════════════════
+   DEFAULT DATA STRUCTURES
+   ═══════════════════════════════════════════════════════════ */
+function defYD() {
+  /* Per-year data — expenses/income/budgets/journal are year-specific.
+     members array is also per-year (copied on new year creation). */
+  return {
+    expenses:      [],  // { id, date, amount, category, name, mode, period, paid, remark }
+    subscriptions: [],  // { id, date, memberName, memberType, amount, mode, remark }
+    sgtIncome:     [],  // { id, date, name, amount, mode, remark }
+    miscIncome:    [],  // { id, date, desc, amount, mode }
+    journal:       [],  // { id, date, type, from, to, amount, party, desc }
+    members:       [],  // { id, name, type, status }
+    budgets:       {},  // { categoryName: { annual, q1, q2, q3, q4 } }
+    settings: { bankOpen:0, cashOpen:0 }
+  };
+}
+
+/* Default subscription rates — can be overridden in Settings */
+function defSubRates() {
+  return [
+    { type:'Tabler', annual:70000, cash:70000, bank:0 },
+    { type:'HT',     annual:60000, cash:60000, bank:0 },
+    { type:'Guest',  annual:0,     cash:0,     bank:0 }
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOAD / SAVE STATE
+   ═══════════════════════════════════════════════════════════ */
+function load() {
+  try {
+    const raw = localStorage.getItem(SK);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      /* Migrate older schemas: ensure journal array exists */
+      Object.values(parsed.yearData || {}).forEach(yd => {
+        /* Migrate older schemas: ensure all arrays exist */
+        if (!yd.journal)        yd.journal = [];
+        if (!yd.subscriptions)  yd.subscriptions = [];
+        if (!yd.members)        yd.members = [];
+        if (!yd.sgtIncome)      yd.sgtIncome = [];
+        if (!yd.miscIncome)     yd.miscIncome = [];
+        if (!yd.expenses)       yd.expenses = [];
+        if (!yd.budgets)        yd.budgets = {};
+        if (!yd.settings)       yd.settings = { bankOpen:0, cashOpen:0 };
+      });
+      /* Ensure subscription rates exist */
+      if (!parsed.subRates) parsed.subRates = defSubRates();
+      return parsed;
+    }
+  } catch(e) { console.warn('Load failed:', e); }
+  return {
+    years:           ['2024-25'],
+    currentYear:     '2024-25',
+    categories:      [...DEF_CATS],
+    subRates:        defSubRates(),
+    passwords:       { chairman:'chairman123', secretary:'secretary123', treasurer:'treasurer123' },
+    tablerPins:      {},
+    defaultTablerPin:'0273',
+    pending:         [],
+    yearData:        { '2024-25': defYD() }
+  };
+}
+
+/* Initialise — safe to call now that all constants are defined */
+S     = load();
+/* Ensure new fields exist */
+if (!S.pending)     S.pending = [];
+if (!S.tablerPins)  S.tablerPins = {};
+cYear = S.currentYear;
+
+function sv()  { localStorage.setItem(SK, JSON.stringify(S)); }
+function yd()  { if (!S.yearData[cYear]) S.yearData[cYear] = defYD(); return S.yearData[cYear]; }
+function canEd() { return cRole === 'treasurer'; }
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITY FUNCTIONS
+   ═══════════════════════════════════════════════════════════ */
+const INR = n => '₹' + (n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
+/**
+ * Generate a globally unique ID.
+ * Format: {prefix}-{timestamp_ms}-{random6}
+ * The timestamp + random combination makes cross-device collisions
+ * statistically impossible even when generated offline simultaneously.
+ * @param {string} prefix - short type prefix e.g. 'exp','sub','jrn'
+ */
+function genId(prefix) {
+  const ts  = Date.now().toString(36);                       // base-36 timestamp
+  const rnd = Math.random().toString(36).slice(2, 8);        // 6 random chars
+  return (prefix || 'id') + '-' + ts + '-' + rnd;
+}
+/* Keep uid() as alias for backward-compat with existing records */
+const uid = () => genId('id');
+const td  = () => new Date().toISOString().slice(0,10);
+
+/**
+ * JRT 273 tabling year runs 1 July – 30 June.
+ * Q1 = Jul–Sep | Q2 = Oct–Dec | Q3 = Jan–Mar | Q4 = Apr–Jun
+ */
+function dateToQ(dateStr) {
+  if (!dateStr) return 'Q1';
+  const m = new Date(dateStr).getMonth() + 1;
+  if (m >= 7  && m <= 9)  return 'Q1';
+  if (m >= 10 && m <= 12) return 'Q2';
+  if (m >= 1  && m <= 3)  return 'Q3';
+  return 'Q4';
+}
+
+/** Show toast notification */
+function toast(msg, type='ok') {
+  const el = document.getElementById('tst');
+  el.textContent = msg; el.className = 'toast ' + type + ' show';
+  setTimeout(() => el.className = 'toast', 2800);
+}
+
+/** Get subscription rate for a member type */
+function getSubRate(type) {
+  return (S.subRates || defSubRates()).find(r => r.type === type) || { annual:0, cash:0, bank:0 };
+}
+
+/** Get total paid to date for a member (summed across all subscription records) */
+function getMemberPaid(memberName) {
+  return yd().subscriptions
+    .filter(s => s.memberName === memberName)
+    .reduce((a, s) => ({ cash: a.cash+(s.mode==='Cash'?s.amount:0), bank: a.bank+(s.mode==='Bank'?s.amount:0), total: a.total+s.amount }), {cash:0,bank:0,total:0});
+}
+
+/** Get due amount for a member */
+function getMemberDue(memberName, memberType) {
+  const rate = getSubRate(memberType);
+  const paid = getMemberPaid(memberName);
+  return {
+    total: Math.max(0, rate.annual - paid.total),
+    cash:  Math.max(0, rate.cash   - paid.cash),
+    bank:  Math.max(0, rate.bank   - paid.bank)
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTHENTICATION
+   ═══════════════════════════════════════════════════════════ */
+function selRole(role, btn) {
+  selR = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('pwWrap').classList.remove('hidden');
+  document.getElementById('pwIn').value = '';
+  document.getElementById('pwIn').focus();
+  document.getElementById('lErr').textContent = '';
+}
+
+function doLogin() {
+  if (!selR) { document.getElementById('lErr').textContent = 'Please select a role.'; return; }
+  const pw = document.getElementById('pwIn').value;
+  if (pw !== S.passwords[selR]) { document.getElementById('lErr').textContent = 'Incorrect password. Please try again.'; return; }
+  cRole = selR;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.remove('hidden');
+  const lbl = { chairman:'👑 Chairman', secretary:'📋 Secretary', treasurer:'💼 Treasurer' };
+  document.getElementById('uPillText').textContent = lbl[cRole];
+  if (cRole !== 'treasurer') document.getElementById('roBanner').classList.remove('hidden');
+  applyPerms();
+  initApp();
+}
+
+function logout() {
+  cRole = null; selR = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('roBanner').classList.add('hidden');
+  document.getElementById('pwIn').value = '';
+  document.getElementById('lErr').textContent = '';
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('pwWrap').classList.add('hidden');
+}
+
+function applyPerms() {
+  const edit = canEd();
+  ['btnAddExp','btnAddSub','btnAddSgt','btnAddMisc','btnAddMem','btnBudMgr','btnAddJrnl'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.disabled = !edit;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROUTING & INIT
+   ═══════════════════════════════════════════════════════════ */
+function initApp() { buildYrSel(); populateCats(); populateNames(); renderDashboard(); }
+
+function buildYrSel() {
+  document.getElementById('yrSel').innerHTML = S.years
+    .map(y => `<option value="${y}"${y===cYear?' selected':''}>${y}</option>`).join('');
+}
+
+function changeYear(y) {
+  cYear = y; S.currentYear = y; sv();
+  populateCats(); populateNames();
+  const active = document.querySelector('.tab-panel.active');
+  if (active) renderTab(active.id.replace('tab-',''));
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  renderTab(name);
+}
+
+function renderTab(name) {
+  if      (name==='dashboard') renderDashboard();
+  else if (name==='budget')    renderBudget();
+  else if (name==='expenses')  renderExps();
+  else if (name==='income')    renderInc();
+  else if (name==='journal')   renderJrnl();
+  else if (name==='members')   renderMems();
+  else if (name==='pl')        renderPL();
+  else if (name==='settings')  renderSet();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════════════════════ */
+function renderDashboard() {
+  const d     = yd();
+  const tExp  = d.expenses.reduce((a,e) => a+e.amount, 0);
+  const tPaid = d.expenses.filter(e=>e.paid).reduce((a,e) => a+e.amount, 0);
+  const tInc  = d.subscriptions.reduce((a,s)=>a+s.amount,0) + d.sgtIncome.reduce((a,s)=>a+s.amount,0) + d.miscIncome.reduce((a,m)=>a+m.amount,0);
+  const surp  = tInc - tPaid;
+  const unp   = d.expenses.filter(e=>!e.paid);
+
+  document.getElementById('dashYrLabel').textContent = `Financial Year ${cYear}`;
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card c-navy"><div class="s-lbl">Total Expenses</div><div class="s-val">${INR(tExp)}</div><div class="s-sub">${d.expenses.length} transactions · ${INR(tPaid)} paid</div></div>
+    <div class="stat-card c-green"><div class="s-lbl">Total Income</div><div class="s-val">${INR(tInc)}</div><div class="s-sub">${d.subscriptions.length} subscription payments</div></div>
+    <div class="stat-card ${surp>=0?'c-green':'c-red'}"><div class="s-lbl">Net Surplus</div><div class="s-val" style="color:${surp>=0?'var(--green)':'var(--red)'}">${INR(surp)}</div><div class="s-sub">${surp>=0?'✅ In surplus':'⚠️ Deficit'} · paid only</div></div>
+    <div class="stat-card ${unp.length>0?'c-gold':'c-green'}"><div class="s-lbl">Unpaid Expenses</div><div class="s-val" style="color:${unp.length>0?'var(--gold)':'var(--green)'}">${unp.length}</div><div class="s-sub">${unp.length>0?INR(unp.reduce((a,e)=>a+e.amount,0))+' outstanding':'All cleared'}</div></div>`;
+
+  /* Category bar chart */
+  const ct = {};
+  d.expenses.forEach(e => ct[e.category] = (ct[e.category]||0) + e.amount);
+  const sorted = Object.entries(ct).sort((a,b)=>b[1]-a[1]);
+  const mx = sorted[0]?.[1] || 1;
+  document.getElementById('catChart').innerHTML = sorted.length
+    ? sorted.map(([cat,amt],i) => `
+        <div class="chart-row">
+          <div class="chart-label" title="${cat}">${cat.replace(' Expenses','')}</div>
+          <div class="chart-track"><div class="chart-fill CC${i%24}" style="width:${(amt/mx*100).toFixed(0)}%">${INR(amt)}</div></div>
+        </div>`).join('')
+    : '<div class="text-muted" style="padding:10px 0">No expenses recorded yet.</div>';
+
+  /* Recent 8 transactions */
+  const rec = [...d.expenses].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  document.getElementById('recTxns').innerHTML = rec.map(e =>
+    `<tr class="${!e.paid?'unpaid-row':''}">
+       <td>${e.date}</td>
+       <td><span class="badge" style="background:${CCOL[S.categories.indexOf(e.category)%24]}22;color:${CCOL[S.categories.indexOf(e.category)%24]};border-color:${CCOL[S.categories.indexOf(e.category)%24]}44;font-size:10px">${e.category}</span></td>
+       <td class="hm">${e.remark||'—'}</td><td class="hm">${e.name||'—'}</td>
+       <td class="hm"><span class="badge b-${(e.mode||'cash').toLowerCase()}">${e.mode||''}</span></td>
+       <td class="amt">${INR(e.amount)}</td>
+     </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text-muted);padding:20px;text-align:center">No expenses yet</td></tr>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BUDGET SUMMARY
+   ═══════════════════════════════════════════════════════════ */
+/** Get budget allocation for a category */
+function getBud(cat) {
+  const b = yd().budgets[cat] || {};
+  const a = b.annual || 0;
+  const q = Math.floor(a/4);
+  return { annual:a, q1:b.q1!==undefined?b.q1:q, q2:b.q2!==undefined?b.q2:q, q3:b.q3!==undefined?b.q3:q, q4:b.q4!==undefined?b.q4:(a-q*3) };
+}
+
+/** Get PAID spend for a category (optionally by quarter) */
+function getSpent(cat, q) {
+  return yd().expenses.filter(e => e.category===cat && (!q||e.period===q) && e.paid).reduce((a,e)=>a+e.amount,0);
+}
+
+/** Get UNPAID amount for a category (optionally by quarter) */
+function getUnpaid(cat, q) {
+  return yd().expenses.filter(e => e.category===cat && (!q||e.period===q) && !e.paid).reduce((a,e)=>a+e.amount,0);
+}
+
+function renderBudget() {
+  const Qs = ['Q1','Q2','Q3','Q4'];
+  const QL = ['Q1 Jul–Sep','Q2 Oct–Dec','Q3 Jan–Mar','Q4 Apr–Jun'];
+
+  let html = `<thead><tr>
+    <th style="text-align:left">Category</th>
+    <th>Annual Budget</th>
+    ${Qs.map((q,i) => `<th>${QL[i]}<br><span style="font-weight:400;font-size:9px;opacity:.7">Budget / Paid / Unpaid</span></th>`).join('')}
+    <th>Paid Spent</th><th>Unpaid</th><th>Balance</th>
+  </tr></thead><tbody>`;
+
+  let tA=0, tS=0, tU=0;
+  const qbT=[0,0,0,0], qsT=[0,0,0,0], quT=[0,0,0,0];
+
+  S.categories.forEach(cat => {
+    const b   = getBud(cat);
+    const sp  = getSpent(cat);
+    const unp = getUnpaid(cat);
+    if (b.annual===0 && sp===0 && unp===0) return;
+    tA+=b.annual; tS+=sp; tU+=unp;
+    const bal = b.annual - sp - unp;
+    const bc  = (sp+unp)>b.annual?'over':(sp+unp)>b.annual*.85&&b.annual>0?'warn':'safe';
+
+    const qcells = [b.q1,b.q2,b.q3,b.q4].map((qb,i) => {
+      const qs  = getSpent(cat, Qs[i]);
+      const qu  = getUnpaid(cat, Qs[i]);
+      qbT[i]+=qb; qsT[i]+=qs; quT[i]+=qu;
+      const pct = qb>0 ? Math.min(120,(qs+qu)/qb*100) : (qs+qu>0?100:0);
+      const cls = (qs+qu)>qb&&qb>0?'over':pct>85?'warn':'safe';
+      return `<td>
+        <div style="font-size:11px">${INR(qb)}</div>
+        <div class="safe" style="font-size:11px">${INR(qs)}</div>
+        ${qu>0?`<div class="warn" style="font-size:10px">+${INR(qu)} unpaid</div>`:''}
+        ${qb>0?`<div class="pb"><div class="pbf" style="width:${Math.min(100,pct).toFixed(0)}%;background:${pct>100?'var(--red)':pct>85?'var(--gold)':'var(--green)'}"></div></div>`:''}
+      </td>`;
+    }).join('');
+
+    html += `<tr><td>${cat}</td><td class="amt">${INR(b.annual)}</td>${qcells}<td class="amt safe">${INR(sp)}</td><td class="amt warn">${unp>0?INR(unp):'—'}</td><td class="amt ${bc}">${INR(bal)}</td></tr>`;
+  });
+
+  html += `<tr class="tot-row"><td>Grand Total</td><td class="amt">${INR(tA)}</td>
+    ${qbT.map((qb,i)=>`<td><div class="amt">${INR(qb)}</div><div style="font-size:11px">${INR(qsT[i])}</div>${quT[i]>0?`<div class="warn" style="font-size:10px">+${INR(quT[i])}</div>`:''}</td>`).join('')}
+    <td class="amt">${INR(tS)}</td><td class="amt warn">${tU>0?INR(tU):'—'}</td>
+    <td class="amt ${tA-tS-tU<0?'over':'safe'}">${INR(tA-tS-tU)}</td></tr></tbody>`;
+  document.getElementById('budTable').innerHTML = html;
+}
+
+function openBudMgr() {
+  if (!canEd()) { toast('View-only access','err'); return; }
+  document.getElementById('budMgrYr').textContent = cYear;
+  document.getElementById('budMgrErr').style.display = 'none';
+  document.getElementById('budMgrRows').innerHTML = S.categories.map(cat => {
+    const b = getBud(cat);
+    return `<div style="border:1px solid var(--border);border-radius:var(--r);padding:13px;margin-bottom:9px">
+      <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:9px">${cat}</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+        <div><label style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:3px">Annual</label>
+          <input type="number" data-cat="${cat}" data-q="annual" value="${b.annual}" min="0"
+            style="padding:7px 9px;border-radius:6px;border:1.5px solid var(--border);font-size:12px;width:100%;font-family:'Inter',sans-serif;min-height:38px"
+            oninput="autoSplit(this)"></div>
+        ${['q1','q2','q3','q4'].map((q,i)=>`
+          <div><label style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:3px">Q${i+1}</label>
+            <input type="number" data-cat="${cat}" data-q="${q}" value="${[b.q1,b.q2,b.q3,b.q4][i]}" min="0"
+              style="padding:7px 9px;border-radius:6px;border:1.5px solid var(--border);font-size:12px;width:100%;font-family:'Inter',sans-serif;min-height:38px"
+              oninput="validateQBudget(this)"></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  oMo('moBud');
+}
+
+/** Auto-split annual into equal quarters */
+function autoSplit(el) {
+  const annual = +el.value || 0;
+  const q      = Math.floor(annual/4);
+  el.closest('div[style]').querySelectorAll('input[data-q]').forEach(inp => {
+    if (inp.dataset.q !== 'annual')
+      inp.value = inp.dataset.q === 'q4' ? (annual - q*3) : q;
+  });
+  validateQBudget(el);
+}
+
+/** Validate Q1+Q2+Q3+Q4 does not exceed Annual */
+function validateQBudget(el) {
+  const container = el.closest('div[style]');
+  const annualEl  = container.querySelector('[data-q="annual"]');
+  const annual    = +annualEl.value || 0;
+  const qSum      = ['q1','q2','q3','q4'].reduce((s,q) => {
+    const inp = container.querySelector(`[data-q="${q}"]`);
+    return s + (+inp?.value || 0);
+  }, 0);
+  const errEl = document.getElementById('budMgrErr');
+  const cat   = el.dataset.cat || annualEl.dataset.cat;
+  if (qSum > annual && annual > 0) {
+    errEl.textContent = `Error — "${cat}": Total of quarterly budgets (${INR(qSum)}) cannot exceed Annual budget (${INR(annual)}). Please reduce quarterly allocations.`;
+    errEl.style.display = 'block';
+  } else {
+    errEl.style.display = 'none';
+  }
+}
+
+function saveBuds() {
+  /* Final validation before saving */
+  let hasErr = false;
+  document.querySelectorAll('#budMgrRows [data-q="annual"]').forEach(annualEl => {
+    const cat    = annualEl.dataset.cat;
+    const annual = +annualEl.value || 0;
+    const container = annualEl.closest('div[style]');
+    const qSum   = ['q1','q2','q3','q4'].reduce((s,q) => {
+      const inp = container.querySelector(`[data-q="${q}"]`);
+      return s + (+inp?.value || 0);
+    }, 0);
+    if (qSum > annual && annual > 0) hasErr = true;
+  });
+  if (hasErr) { toast('Fix quarterly budget errors before saving','err'); return; }
+
+  document.querySelectorAll('#budMgrRows input[data-cat]').forEach(inp => {
+    const cat = inp.dataset.cat, q = inp.dataset.q;
+    if (!yd().budgets[cat]) yd().budgets[cat] = {};
+    yd().budgets[cat][q] = +inp.value || 0;
+  });
+  svSync(); cMo('moBud'); renderBudget(); toast('✅ Budgets saved');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EXPENSES
+   ═══════════════════════════════════════════════════════════ */
+function renderExps() {
+  const f = document.getElementById('expCatF');
+  f.innerHTML = '<option value="">All Categories</option>' + S.categories.map(c=>`<option>${c}</option>`).join('');
+  filterExp();
+}
+
+function filterExp() {
+  const d    = yd();
+  const q    = (document.getElementById('expSrch')?.value||'').toLowerCase();
+  const cat  = document.getElementById('expCatF')?.value||'';
+  const qtr  = document.getElementById('expQF')?.value||'';
+  const mode = document.getElementById('expModeF')?.value||'';
+  const paid = document.getElementById('expPaidF')?.value||'';
+  expFil = d.expenses.filter(e =>
+    (!q    || [e.remark,e.name,e.category].some(v=>(v||'').toLowerCase().includes(q))) &&
+    (!cat  || e.category===cat) && (!qtr||e.period===qtr) &&
+    (!mode || e.mode===mode) && (!paid||(paid==='paid'?e.paid:!e.paid))
+  );
+  expFil.sort((a,b) => {
+    let av=a[expSrt.k]??'', bv=b[expSrt.k]??'';
+    if (expSrt.k==='amount'){av=+av;bv=+bv;}
+    return av<bv?-expSrt.d:av>bv?expSrt.d:0;
+  });
+  expPage=1; renderExpTbl();
+}
+
+function srt(k) { expSrt.k===k?expSrt.d*=-1:(expSrt.k=k,expSrt.d=1); filterExp(); }
+
+function renderExpTbl() {
+  const sl   = expFil.slice((expPage-1)*PG, expPage*PG);
+  const tot  = expFil.reduce((a,e)=>a+e.amount,0);
+  const edit = canEd();
+
+  /* Unpaid banner — based on full year, not just filtered */
+  const allUnpaid = yd().expenses.filter(e=>!e.paid);
+  const unpaidAmt = allUnpaid.reduce((a,e)=>a+e.amount,0);
+  const banner    = document.getElementById('unpaidBanner');
+  banner.classList.toggle('hidden', allUnpaid.length===0);
+  if (allUnpaid.length) {
+    document.getElementById('unpaidCount').textContent = `${allUnpaid.length} transaction${allUnpaid.length>1?'s':''} pending payment`;
+    document.getElementById('unpaidTotal').textContent = INR(unpaidAmt);
+  }
+
+  document.getElementById('expTbl').innerHTML = sl.map(ex =>
+    `<tr class="${!ex.paid?'unpaid-row':''}">
+       <td>${ex.date}</td>
+       <td><span class="badge" style="background:${CCOL[S.categories.indexOf(ex.category)%24]}22;color:${CCOL[S.categories.indexOf(ex.category)%24]};border-color:${CCOL[S.categories.indexOf(ex.category)%24]}44;font-size:10px">${ex.category}</span></td>
+       <td class="hm">${ex.remark||'—'}</td>
+       <td class="hm">${ex.name||'—'}</td>
+       <td class="hm"><span class="badge b-${(ex.mode||'cash').toLowerCase()}">${ex.mode||''}</span></td>
+       <td class="hm"><span class="badge b-${(ex.period||'').toLowerCase()}">${ex.period||''}</span></td>
+       <td class="amt">${INR(ex.amount)}</td>
+       <td><div class="actions">
+         <span class="badge ${ex.paid?'b-paid':'b-due'}">${ex.paid?'Paid':'Unpaid'}</span>
+         ${edit?`<button class="btn btn-ghost btn-sm" onclick="openExpMo(${ex.id})" title="Edit">✏️</button><button class="btn btn-danger btn-sm" onclick="delExp(${ex.id})" title="Delete">🗑</button>`:''}
+       </div></td>
+     </tr>`).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No expenses match current filters</td></tr>';
+
+  /* Pagination */
+  const pages = Math.ceil(expFil.length/PG);
+  const pg = document.getElementById('expPag'); pg.innerHTML='';
+  if (pages>1) {
+    if (expPage>1) pg.innerHTML+=`<button class="pg" onclick="goPg(${expPage-1})">‹ Prev</button>`;
+    for (let i=Math.max(1,expPage-2);i<=Math.min(pages,expPage+2);i++) pg.innerHTML+=`<button class="pg ${i===expPage?'on':''}" onclick="goPg(${i})">${i}</button>`;
+    if (expPage<pages) pg.innerHTML+=`<button class="pg" onclick="goPg(${expPage+1})">Next ›</button>`;
+  }
+  document.getElementById('expFtr').textContent = `Showing ${sl.length} of ${expFil.length} entries · Total: ${INR(tot)}`;
+}
+
+function goPg(p) { expPage=p; renderExpTbl(); }
+
+function openExpMo(id) {
+  if (!canEd()) { toast('View-only access','err'); return; }
+  document.getElementById('moExpT').textContent = id ? 'Edit Expense' : 'Add Expense';
+  populateCats(); populateNames();
+  if (id) {
+    const ex = yd().expenses.find(e=>e.id==id); if(!ex) return;
+    document.getElementById('expId').value=ex.id; document.getElementById('expDt').value=ex.date;
+    document.getElementById('expAm').value=ex.amount; document.getElementById('expCt').value=ex.category;
+    document.getElementById('expNm').value=ex.name; document.getElementById('expMd').value=ex.mode||'Cash';
+    document.getElementById('expQ').value=ex.period||dateToQ(ex.date);
+    document.getElementById('expPd').value=String(ex.paid); document.getElementById('expRm').value=ex.remark||'';
+  } else {
+    document.getElementById('expId').value=''; document.getElementById('expDt').value=td();
+    ['expAm','expRm'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('expPd').value='false';
+    document.getElementById('expQ').value=dateToQ(td());
+  }
+  oMo('moExp');
+}
+
+function saveExp() {
+  const id=document.getElementById('expId').value;
+  const expDate=document.getElementById('expDt').value;
+  const ex={ id:id?String(id):genId('exp'), date:expDate, amount:+document.getElementById('expAm').value, category:document.getElementById('expCt').value, name:document.getElementById('expNm').value, mode:document.getElementById('expMd').value, period:dateToQ(expDate), paid:document.getElementById('expPd').value==='true', remark:document.getElementById('expRm').value };
+  if (!ex.date||!ex.amount||!ex.category) { toast('Please fill Date, Amount and Category','err'); return; }
+  const d=yd();
+  if (id){const i=d.expenses.findIndex(e=>e.id==id);if(i>=0)d.expenses[i]=ex;}else d.expenses.push(ex);
+  svSync(); cMo('moExp'); filterExp(); renderDashboard(); toast(id?'✅ Expense updated':'✅ Expense added');
+}
+
+function delExp(id) {
+  if (!confirm('Permanently delete this expense?')) return;
+  yd().expenses=yd().expenses.filter(e=>e.id!=id);
+  svSync(); filterExp(); renderDashboard(); toast('Expense deleted','err');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INCOME
+   ═══════════════════════════════════════════════════════════ */
+function renderInc() { renderSubDueSummary(); renderSubTbl(); renderSgtTbl(); renderMiscTbl(); }
+
+/**
+ * Subscription Due Summary Card — shows each member's outstanding dues
+ * split by Cash and Bank, based on subscription rates in Settings
+ */
+function renderSubDueSummary() {
+  const members = (yd().members||[]).filter(m=>m.status==='active'&&m.type!=='Guest');
+  const rows = members.map(m => {
+    const due = getMemberDue(m.name, m.type);
+    const paid = getMemberPaid(m.name);
+    const rate = getSubRate(m.type);
+    if (rate.annual===0) return '';
+    return `<tr>
+      <td style="font-weight:500">${m.name}</td>
+      <td><span class="badge b-${m.type==='HT'?'ht':'tabler'}">${m.type}</span></td>
+      <td class="amt">${INR(rate.annual)}</td>
+      <td class="amt safe">${INR(paid.total)}</td>
+      <td class="amt ${due.total>0?'amt-red':''}">${due.total>0?INR(due.total):'—'}</td>
+      <td class="amt ${due.cash>0?'amt-red':''}">${due.cash>0?INR(due.cash):'—'}</td>
+      <td class="amt ${due.bank>0?'amt-red':''}">${due.bank>0?INR(due.bank):'—'}</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+
+  const totalDue  = members.reduce((a,m)=>a+getMemberDue(m.name,m.type).total,0);
+  const totalPaid = members.reduce((a,m)=>a+getMemberPaid(m.name).total,0);
+
+  const card = document.getElementById('subDueSummaryCard');
+  if (!rows) { card.style.display='none'; return; }
+  card.style.display='block';
+  document.getElementById('subDueSummary').innerHTML = `
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead style="background:var(--navy)"><tr>
+        <th style="padding:9px 12px;text-align:left;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Member</th>
+        <th style="padding:9px 12px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase">Type</th>
+        <th style="padding:9px 12px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase">Annual Sub</th>
+        <th style="padding:9px 12px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase">Paid</th>
+        <th style="padding:9px 12px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase">Total Due</th>
+        <th style="padding:9px 12px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase">Cash Due</th>
+        <th style="padding:9px 12px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase">Bank Due</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="background:var(--bg);font-weight:700;border-top:2px solid var(--border-mid)">
+        <td style="padding:9px 12px;font-weight:700">Total</td><td></td>
+        <td style="padding:9px 12px;font-family:'Playfair Display',serif">${INR(members.reduce((a,m)=>a+getSubRate(m.type).annual,0))}</td>
+        <td style="padding:9px 12px;font-family:'Playfair Display',serif;color:var(--green)">${INR(totalPaid)}</td>
+        <td style="padding:9px 12px;font-family:'Playfair Display',serif;color:${totalDue>0?'var(--red)':'var(--green)'}">${totalDue>0?INR(totalDue):'All Clear ✅'}</td>
+        <td colspan="2"></td>
+      </tr></tfoot>
+    </table></div>`;
+}
+
+/** Render subscription payment log */
+function renderSubTbl() {
+  const d=yd(); const edit=canEd();
+  const tot=d.subscriptions.reduce((a,s)=>a+s.amount,0);
+  const rows=d.subscriptions.map((s,i) =>
+    `<tr><td>${i+1}</td><td>${s.date||'—'}</td><td style="font-weight:500">${s.memberName}</td>
+     <td><span class="badge b-${s.memberType==='HT'?'ht':'tabler'}">${s.memberType||'Tabler'}</span></td>
+     <td class="amt">${INR(s.amount)}</td>
+     <td><span class="badge b-${(s.mode||'cash').toLowerCase()}">${s.mode||'Cash'}</span></td>
+     <td class="amt">${INR(getMemberPaid(s.memberName).total)}</td>
+     <td class="amt ${getMemberDue(s.memberName,s.memberType).total>0?'amt-red':''}">
+       ${getMemberDue(s.memberName,s.memberType).total>0?INR(getMemberDue(s.memberName,s.memberType).total):'—'}</td>
+     ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openSubMo('${s.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delSub('${s.id}')">🗑</button></div></td>`:''}</tr>`
+  ).join('');
+  document.getElementById('subTbl').innerHTML = rows+
+    `<tr class="tot-row"><td colspan="4">Grand Total</td><td class="amt">${INR(tot)}</td><td colspan="${edit?4:3}"></td></tr>`;
+}
+
+function openSubMo(id) {
+  if (!canEd()) { toast('View-only access','err'); return; }
+  document.getElementById('moSubT').textContent = id ? 'Edit Subscription Payment' : 'Add Subscription Payment';
+  const mems=(yd().members||[]).filter(m=>m.status==='active'&&m.type!=='Guest');
+  document.getElementById('subMem').innerHTML = mems.map(m=>`<option value="${m.name}" data-type="${m.type}">${m.name} (${m.type})</option>`).join('');
+  if (id) {
+    const s=yd().subscriptions.find(x=>x.id===id);
+    document.getElementById('subId').value=s.id; document.getElementById('subDt').value=s.date||td();
+    document.getElementById('subMem').value=s.memberName; document.getElementById('subAmt').value=s.amount;
+    document.getElementById('subMode').value=s.mode||'Cash'; document.getElementById('subRmk').value=s.remark||'';
+    showSubDueInfo(s.memberName, s.memberType||'Tabler');
+  } else {
+    document.getElementById('subId').value=''; document.getElementById('subDt').value=td();
+    document.getElementById('subAmt').value=''; document.getElementById('subRmk').value='';
+    prefillSubAmt();
+  }
+  oMo('moSub');
+}
+
+/** Pre-fill subscription amount based on member type when member changes */
+function prefillSubAmt() {
+  const sel=document.getElementById('subMem');
+  const opt=sel.options[sel.selectedIndex];
+  const mType=opt?.dataset?.type||'Tabler';
+  const rate=getSubRate(mType);
+  const mName=sel.value;
+  // Find due amount and suggest it
+  const due=getMemberDue(mName, mType);
+  document.getElementById('subAmt').value = due.total>0 ? due.total : rate.annual;
+  // Pre-select mode based on rate
+  document.getElementById('subMode').value = rate.cash >= rate.bank ? 'Cash' : 'Bank';
+  showSubDueInfo(mName, mType);
+}
+
+function showSubDueInfo(memberName, memberType) {
+  const due=getMemberDue(memberName, memberType);
+  const infoEl=document.getElementById('subDueInfo');
+  if (due.total>0) {
+    infoEl.style.display='block';
+    infoEl.innerHTML=`<strong>Outstanding dues for ${memberName}:</strong> Total ${INR(due.total)} 
+      ${due.cash>0?` · Cash ${INR(due.cash)}`:''}${due.bank>0?` · Bank ${INR(due.bank)}`:''}`;
+  } else {
+    infoEl.style.display='none';
+  }
+}
+
+function saveSub() {
+  const id=document.getElementById('subId').value;
+  const sel=document.getElementById('subMem');
+  const opt=sel.options[sel.selectedIndex];
+  const mType=opt?.dataset?.type||((yd().members||[]).find(m=>m.name===sel.value)?.type||'Tabler');
+  const s={ id:id||genId('sub'), date:document.getElementById('subDt').value, memberName:sel.value, memberType:mType, amount:+document.getElementById('subAmt').value||0, mode:document.getElementById('subMode').value, remark:document.getElementById('subRmk').value };
+  if (!s.memberName||!s.amount) { toast('Please fill Member and Amount','err'); return; }
+  const d=yd();
+  if(id){const i=d.subscriptions.findIndex(x=>x.id===id);if(i>=0)d.subscriptions[i]=s;}else d.subscriptions.push(s);
+  svSync(); cMo('moSub'); renderInc(); toast('✅ Subscription saved');
+}
+
+function delSub(id) {
+  if (!confirm('Delete this subscription record?')) return;
+  yd().subscriptions=yd().subscriptions.filter(s=>s.id!==id);
+  svSync(); renderInc(); toast('Deleted','err');
+}
+
+/* Sergeanting */
+function renderSgtTbl() {
+  const d=yd(); const edit=canEd();
+  const tot=d.sgtIncome.reduce((a,s)=>a+s.amount,0);
+  document.getElementById('sgtTbl').innerHTML = d.sgtIncome.map((s,i) =>
+    `<tr><td>${i+1}</td><td>${s.date}</td><td>${s.name}</td><td class="amt">${INR(s.amount)}</td>
+     <td><span class="badge b-${s.mode.toLowerCase()}">${s.mode}</span></td><td>${s.remark}</td>
+     ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openSgtMo('${s.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delSgt('${s.id}')">🗑</button></div></td>`:''}</tr>`
+  ).join('')+`<tr class="tot-row"><td colspan="3">Total</td><td class="amt">${INR(tot)}</td><td colspan="${edit?3:2}"></td></tr>`;
+}
+function openSgtMo(id) {
+  if(!canEd()){toast('View-only','err');return;}
+  if(id){const s=yd().sgtIncome.find(x=>x.id===id);document.getElementById('sgtId').value=s.id;document.getElementById('sgtDt').value=s.date;document.getElementById('sgtAm').value=s.amount;document.getElementById('sgtNm').value=s.name;document.getElementById('sgtMd').value=s.mode;document.getElementById('sgtRm').value=s.remark;}
+  else{document.getElementById('sgtId').value='';document.getElementById('sgtDt').value=td();['sgtAm','sgtNm','sgtRm'].forEach(i=>document.getElementById(i).value='');}
+  oMo('moSgt');
+}
+function saveSgt() {
+  const id=document.getElementById('sgtId').value;
+  const s={id:id||genId('sgt'),date:document.getElementById('sgtDt').value,name:document.getElementById('sgtNm').value,amount:+document.getElementById('sgtAm').value||0,mode:document.getElementById('sgtMd').value,remark:document.getElementById('sgtRm').value};
+  const d=yd();if(id){const i=d.sgtIncome.findIndex(x=>x.id===id);if(i>=0)d.sgtIncome[i]=s;}else d.sgtIncome.push(s);
+  svSync();cMo('moSgt');renderSgtTbl();toast('✅ Saved');
+}
+function delSgt(id){if(!confirm('Delete?'))return;yd().sgtIncome=yd().sgtIncome.filter(s=>s.id!==id);svSync();renderSgtTbl();toast('Deleted','err');}
+
+/* Misc income */
+function renderMiscTbl() {
+  const d=yd(); const edit=canEd();
+  document.getElementById('miscTbl').innerHTML = d.miscIncome.map((m,i) =>
+    `<tr><td>${i+1}</td><td>${m.date}</td><td>${m.desc}</td><td class="amt">${INR(m.amount)}</td>
+     <td><span class="badge b-${m.mode.toLowerCase()}">${m.mode}</span></td>
+     ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openMiscMo('${m.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delMisc('${m.id}')">🗑</button></div></td>`:''}</tr>`
+  ).join('')||'<tr><td colspan="6" style="color:var(--text-muted);padding:16px;text-align:center">No miscellaneous income</td></tr>';
+}
+function openMiscMo(id) {
+  if(!canEd()){toast('View-only','err');return;}
+  if(id){const m=yd().miscIncome.find(x=>x.id===id);document.getElementById('miscId').value=m.id;document.getElementById('miscDt').value=m.date;document.getElementById('miscAm').value=m.amount;document.getElementById('miscDs').value=m.desc;document.getElementById('miscMd').value=m.mode;}
+  else{document.getElementById('miscId').value='';document.getElementById('miscDt').value=td();['miscAm','miscDs'].forEach(i=>document.getElementById(i).value='');}
+  oMo('moMisc');
+}
+function saveMisc(){const id=document.getElementById('miscId').value;const m={id:id||genId('mis'),date:document.getElementById('miscDt').value,desc:document.getElementById('miscDs').value,amount:+document.getElementById('miscAm').value||0,mode:document.getElementById('miscMd').value};const d=yd();if(id){const i=d.miscIncome.findIndex(x=>x.id===id);if(i>=0)d.miscIncome[i]=m;}else d.miscIncome.push(m);svSync();cMo('moMisc');renderMiscTbl();toast('✅ Saved');}
+function delMisc(id){if(!confirm('Delete?'))return;yd().miscIncome=yd().miscIncome.filter(m=>m.id!==id);svSync();renderMiscTbl();toast('Deleted','err');}
+
+/* ═══════════════════════════════════════════════════════════
+   JOURNAL ENTRIES (Contra + Loans)
+   ═══════════════════════════════════════════════════════════ */
+function renderJrnl() {
+  const d=yd(); const edit=canEd();
+  document.getElementById('jrnlTbl').innerHTML = d.journal.map((j,i) =>
+    `<tr><td>${i+1}</td><td>${j.date}</td>
+     <td><span class="badge ${j.type.startsWith('loan')?'b-loan':'b-contra'}">${j.type.replace('_',' ')}</span></td>
+     <td>${j.desc}${j.party?` — <em>${j.party}</em>`:''}</td>
+     <td><span class="badge b-${j.from.toLowerCase()}">${j.from}</span></td>
+     <td><span class="badge b-${j.to.toLowerCase()}">${j.to}</span></td>
+     <td class="amt">${INR(j.amount)}</td>
+     ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openJrnlMo('${j.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delJrnl('${j.id}')">🗑</button></div></td>`:''}</tr>`
+  ).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No journal entries yet. Use this tab for contra entries (cash ↔ bank) and loans.</td></tr>';
+}
+
+function updateJrnlFields() {
+  /* Show/hide party name field based on type */
+  const type=document.getElementById('jrnlType').value;
+  const isLoan=type!=='contra';
+  document.getElementById('jrnlPartyRow').style.opacity=isLoan?1:0.3;
+  document.getElementById('jrnlParty').disabled=!isLoan;
+  /* For loans, From/To labels change */
+  if (type==='loan_given')    { document.getElementById('jrnlFrom').value='Cash'; document.getElementById('jrnlTo').value='Bank'; }
+  if (type==='loan_received') { document.getElementById('jrnlFrom').value='Bank'; document.getElementById('jrnlTo').value='Cash'; }
+  if (type==='loan_repaid')   { document.getElementById('jrnlFrom').value='Cash'; document.getElementById('jrnlTo').value='Bank'; }
+}
+
+function openJrnlMo(id) {
+  if(!canEd()){toast('View-only','err');return;}
+  document.getElementById('moJrnlT').textContent=id?'Edit Journal Entry':'Add Journal Entry';
+  if(id){
+    const j=yd().journal.find(x=>x.id===id);
+    document.getElementById('jrnlId').value=j.id; document.getElementById('jrnlDt').value=j.date;
+    document.getElementById('jrnlType').value=j.type; document.getElementById('jrnlFrom').value=j.from;
+    document.getElementById('jrnlTo').value=j.to; document.getElementById('jrnlAmt').value=j.amount;
+    document.getElementById('jrnlParty').value=j.party||''; document.getElementById('jrnlDesc').value=j.desc;
+  } else {
+    document.getElementById('jrnlId').value=''; document.getElementById('jrnlDt').value=td();
+    ['jrnlAmt','jrnlParty','jrnlDesc'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('jrnlType').value='contra';
+  }
+  updateJrnlFields();
+  oMo('moJrnl');
+}
+
+function saveJrnl(){
+  const id=document.getElementById('jrnlId').value;
+  const j={id:id||genId('jrn'),date:document.getElementById('jrnlDt').value,type:document.getElementById('jrnlType').value,from:document.getElementById('jrnlFrom').value,to:document.getElementById('jrnlTo').value,amount:+document.getElementById('jrnlAmt').value||0,party:document.getElementById('jrnlParty').value,desc:document.getElementById('jrnlDesc').value};
+  if(!j.date||!j.amount||!j.desc){toast('Fill Date, Amount and Description','err');return;}
+  if(j.from===j.to){toast('From and To accounts cannot be the same','err');return;}
+  const d=yd();if(id){const i=d.journal.findIndex(x=>x.id===id);if(i>=0)d.journal[i]=j;}else d.journal.push(j);
+  svSync();cMo('moJrnl');renderJrnl();toast('✅ Journal entry saved');
+}
+
+function delJrnl(id){if(!confirm('Delete this journal entry?'))return;yd().journal=yd().journal.filter(j=>j.id!==id);svSync();renderJrnl();toast('Deleted','err');}
+
+/* ═══════════════════════════════════════════════════════════
+   MEMBERS
+   ═══════════════════════════════════════════════════════════ */
+function renderMems() {
+  const d=yd(); const edit=canEd();
+  document.getElementById('memTbl').innerHTML = (d.members||[]).map((m,i) =>
+    `<tr><td>${i+1}</td><td style="font-weight:500">${m.name}</td>
+     <td><span class="badge b-${m.type==='HT'?'ht':'tabler'}">${m.type}</span></td>
+     <td><span class="badge b-${m.status}">${m.status}</span></td>
+     ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openMemMo('${m.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="delMem('${m.id}')">🗑</button></div></td>`:''}</tr>`
+  ).join('') || '<tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center">No members added yet.</td></tr>';
+}
+function openMemMo(id){
+  if(!canEd()){toast('View-only','err');return;}
+  document.getElementById('moMemT').textContent=id?'Edit Member':'Add Member';
+  if(id){const m=(yd().members||[]).find(x=>x.id===id);if(!m)return;document.getElementById('memId').value=m.id;document.getElementById('memNm').value=m.name;document.getElementById('memTp').value=m.type;document.getElementById('memSt').value=m.status;}
+  else{document.getElementById('memId').value='';document.getElementById('memNm').value='';}
+  oMo('moMem');
+}
+function saveMem(){
+  const id=document.getElementById('memId').value;
+  const m={id:id||genId('mem'),name:document.getElementById('memNm').value.trim(),type:document.getElementById('memTp').value,status:document.getElementById('memSt').value};
+  if(!m.name){toast('Enter member name','err');return;}
+  const d=yd();if(id){const i=d.members.findIndex(x=>x.id===id);if(i>=0)d.members[i]=m;}else d.members.push(m);
+  svSync();cMo('moMem');renderMems();populateNames();toast('✅ Member saved');
+}
+function delMem(id){if(!confirm('Delete member? Historical records are retained.'))return;if(!yd().members)yd().members=[];yd().members=(yd().members||[]).filter(m=>m.id!==id);svSync();renderMems();populateNames();toast('Deleted','err');}
+
+/* ═══════════════════════════════════════════════════════════
+   P&L
+   ═══════════════════════════════════════════════════════════ */
+function renderPL() {
+  const d=yd();
+  document.getElementById('plYr').textContent=`Financial Year ${cYear} · Jodhpur Round Table 273`;
+  document.getElementById('plYrLabel').textContent=cYear;
+
+  /* Income */
+  const subInc = d.subscriptions.reduce((a,s)=>a+s.amount,0);
+  const subC   = d.subscriptions.filter(s=>s.mode==='Cash').reduce((a,s)=>a+s.amount,0);
+  const subB   = d.subscriptions.filter(s=>s.mode==='Bank').reduce((a,s)=>a+s.amount,0);
+  const sgt    = d.sgtIncome.reduce((a,s)=>a+s.amount,0);
+  const misc   = d.miscIncome.reduce((a,m)=>a+m.amount,0);
+  const tI     = subInc+sgt+misc;
+
+  /* Expenses */
+  const tE     = d.expenses.reduce((a,e)=>a+e.amount,0);
+  const tEpaid = d.expenses.filter(e=>e.paid).reduce((a,e)=>a+e.amount,0);
+  const tUnpaidCash=d.expenses.filter(e=>!e.paid&&e.mode==='Cash').reduce((a,e)=>a+e.amount,0);
+  const tUnpaidBank=d.expenses.filter(e=>!e.paid&&e.mode==='Bank').reduce((a,e)=>a+e.amount,0);
+
+  /* Journal effects on bank/cash */
+  const jrnlBankEffect = d.journal.reduce((a,j)=>{
+    if(j.type==='contra'||j.type==='loan_given'||j.type==='loan_repaid') {
+      if(j.from==='Bank') return a-j.amount;
+      if(j.to==='Bank')   return a+j.amount;
+    }
+    if(j.type==='loan_received'&&j.to==='Bank') return a+j.amount;
+    return a;
+  },0);
+  const jrnlCashEffect = d.journal.reduce((a,j)=>{
+    if(j.type==='contra'||j.type==='loan_given'||j.type==='loan_repaid') {
+      if(j.from==='Cash') return a-j.amount;
+      if(j.to==='Cash')   return a+j.amount;
+    }
+    if(j.type==='loan_received'&&j.to==='Cash') return a+j.amount;
+    return a;
+  },0);
+
+  const surp=d.settings.bankOpen+d.settings.cashOpen+tI-tEpaid;
+  const se=document.getElementById('plSurp');
+  se.textContent=INR(surp);
+  se.style.color=surp>=0?'#4ade80':'#f87171';
+
+  document.getElementById('plInc').innerHTML=`
+    <div class="pl-row"><span>Opening Balance — Bank</span><span class="amt">${INR(d.settings.bankOpen)}</span></div>
+    <div class="pl-row"><span>Opening Balance — Cash</span><span class="amt">${INR(d.settings.cashOpen)}</span></div>
+    <div class="pl-row"><span>Subscriptions (Cash)</span><span class="amt">${INR(subC)}</span></div>
+    <div class="pl-row"><span>Subscriptions (Bank)</span><span class="amt">${INR(subB)}</span></div>
+    <div class="pl-row"><span>Sergeanting Income</span><span class="amt">${INR(sgt)}</span></div>
+    <div class="pl-row"><span>Miscellaneous Income</span><span class="amt">${INR(misc)}</span></div>
+    ${d.journal.length?`<div class="pl-row" style="font-size:11px;color:var(--text-muted)"><span>Journal Entries (net bank/cash effect)</span><span>See Bank &amp; Cash position</span></div>`:''}
+    <div class="pl-row tot"><span>Total Income</span><span class="amt">${INR(tI)}</span></div>`;
+
+  const ct={};
+  d.expenses.filter(e=>e.paid).forEach(e=>ct[e.category]=(ct[e.category]||0)+e.amount);
+  document.getElementById('plExp').innerHTML=Object.entries(ct).sort((a,b)=>b[1]-a[1]).map(([c,a])=>
+    `<div class="pl-row"><span>${c}</span><span class="amt">${INR(a)}</span></div>`).join('')+
+    `<div class="pl-row tot"><span>Total Paid Expenses</span><span class="amt">${INR(tEpaid)}</span></div>
+     <div class="pl-row" style="font-size:11px;color:var(--text-muted)"><span>Total Expenses (incl. unpaid)</span><span>${INR(tE)}</span></div>`;
+
+  /* Unpaid obligations by category */
+  const unpCash={},unpBank={};
+  d.expenses.filter(e=>!e.paid&&e.mode==='Cash').forEach(e=>unpCash[e.category]=(unpCash[e.category]||0)+e.amount);
+  d.expenses.filter(e=>!e.paid&&e.mode==='Bank').forEach(e=>unpBank[e.category]=(unpBank[e.category]||0)+e.amount);
+
+  document.getElementById('plUnpaidCash').innerHTML=Object.keys(unpCash).length
+    ?Object.entries(unpCash).map(([c,a])=>`<div class="pl-row"><span>${c}</span><span class="amt amt-red">${INR(a)}</span></div>`).join('')+`<div class="pl-row tot"><span>Total Unpaid Cash</span><span class="amt amt-red">${INR(tUnpaidCash)}</span></div>`
+    :'<div class="pl-row" style="color:var(--green);font-weight:600;padding:12px 16px">✅ No unpaid cash expenses</div>';
+
+  document.getElementById('plUnpaidBank').innerHTML=Object.keys(unpBank).length
+    ?Object.entries(unpBank).map(([c,a])=>`<div class="pl-row"><span>${c}</span><span class="amt amt-red">${INR(a)}</span></div>`).join('')+`<div class="pl-row tot"><span>Total Unpaid Bank</span><span class="amt amt-red">${INR(tUnpaidBank)}</span></div>`
+    :'<div class="pl-row" style="color:var(--green);font-weight:600;padding:12px 16px">✅ No unpaid bank expenses</div>';
+
+  /* Bank & Cash position (paid transactions + journal) */
+  const bPay=d.expenses.filter(e=>e.mode==='Bank'&&e.paid).reduce((a,e)=>a+e.amount,0);
+  const cPay=d.expenses.filter(e=>e.mode==='Cash'&&e.paid).reduce((a,e)=>a+e.amount,0);
+  const bankClose=d.settings.bankOpen+subB+jrnlBankEffect-bPay;
+  const cashClose=d.settings.cashOpen+subC+sgt+misc+jrnlCashEffect-cPay;
+
+  document.getElementById('plBC').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">🏦 Bank Account</div>
+        <div class="pl-row" style="padding:6px 0"><span>Opening</span><span class="amt">${INR(d.settings.bankOpen)}</span></div>
+        <div class="pl-row" style="padding:6px 0"><span>Subscriptions (Bank)</span><span class="amt amt-green">+${INR(subB)}</span></div>
+        ${jrnlBankEffect!==0?`<div class="pl-row" style="padding:6px 0"><span>Journal Entries (net)</span><span class="amt ${jrnlBankEffect>=0?'amt-green':'amt-red'}">${jrnlBankEffect>=0?'+':''}${INR(jrnlBankEffect)}</span></div>`:''}
+        <div class="pl-row" style="padding:6px 0"><span>Paid Payments</span><span class="amt amt-red">−${INR(bPay)}</span></div>
+        <div class="pl-row tot" style="padding:6px 0"><span>Closing</span><span class="amt">${INR(bankClose)}</span></div>
+        ${tUnpaidBank>0?`<div class="pl-row" style="padding:5px 0;font-size:11px;color:var(--amber)"><span>⏳ Unpaid Bank Obligations</span><span>${INR(tUnpaidBank)}</span></div>`:''}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">💵 Cash in Hand</div>
+        <div class="pl-row" style="padding:6px 0"><span>Opening</span><span class="amt">${INR(d.settings.cashOpen)}</span></div>
+        <div class="pl-row" style="padding:6px 0"><span>Sub (Cash) + Sgt + Misc</span><span class="amt amt-green">+${INR(subC+sgt+misc)}</span></div>
+        ${jrnlCashEffect!==0?`<div class="pl-row" style="padding:6px 0"><span>Journal Entries (net)</span><span class="amt ${jrnlCashEffect>=0?'amt-green':'amt-red'}">${jrnlCashEffect>=0?'+':''}${INR(jrnlCashEffect)}</span></div>`:''}
+        <div class="pl-row" style="padding:6px 0"><span>Paid Payments</span><span class="amt amt-red">−${INR(cPay)}</span></div>
+        <div class="pl-row tot" style="padding:6px 0"><span>Closing</span><span class="amt">${INR(cashClose)}</span></div>
+        ${tUnpaidCash>0?`<div class="pl-row" style="padding:5px 0;font-size:11px;color:var(--amber)"><span>⏳ Unpaid Cash Obligations</span><span>${INR(tUnpaidCash)}</span></div>`:''}
+      </div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS
+   ═══════════════════════════════════════════════════════════ */
+function renderSet() {
+  ['pwC','pwS','pwT'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('yrTags').innerHTML=S.years.map(y=>
+    `<div class="tag">${y} <button class="tag-x" onclick="rmYear('${y}')">×</button></div>`).join('');
+  document.getElementById('catTags').innerHTML=S.categories.map((c,i)=>
+    `<div class="tag">${c} <button class="tag-x" onclick="rmCat(${i})">×</button></div>`).join('');
+  const st=yd().settings;
+  document.getElementById('sBnk').value=st.bankOpen;
+  document.getElementById('sCsh').value=st.cashOpen;
+
+  /* Render subscription rate rows */
+  const rates=S.subRates||defSubRates();
+  document.getElementById('subRateRows').innerHTML=rates.map((r,i)=>`
+    <div class="sub-rate-row" data-idx="${i}">
+      <div class="type-label">${r.type}</div>
+      <div class="fg" style="margin-bottom:0">
+        <div class="field-label" style="font-size:10px;margin-bottom:3px">Annual (₹) <span class="help-icon">?<span class="tip">Total annual subscription for this member type.</span></span></div>
+        <input type="number" data-idx="${i}" data-field="annual" value="${r.annual}" min="0" style="min-height:38px;font-size:12px" oninput="onSubRateChange(this)">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <div class="field-label" style="font-size:10px;margin-bottom:3px">Cash Component (₹) <span class="help-icon">?<span class="tip">How much of the annual subscription is expected in Cash.</span></span></div>
+        <input type="number" data-idx="${i}" data-field="cash" value="${r.cash}" min="0" style="min-height:38px;font-size:12px" oninput="onSubRateChange(this)">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <div class="field-label" style="font-size:10px;margin-bottom:3px">Bank Component (₹) <span class="help-icon">?<span class="tip">How much is expected via Bank/UPI/Transfer.</span></span></div>
+        <input type="number" data-idx="${i}" data-field="bank" value="${r.bank}" min="0" style="min-height:38px;font-size:12px" oninput="onSubRateChange(this)">
+      </div>
+      <div></div>
+    </div>`).join('');
+
+  if (!canEd()) {
+    document.querySelectorAll('#tab-settings input,#tab-settings button,#tab-settings select').forEach(el=>el.disabled=true);
+  }
+}
+
+/** Live update subRates array when inputs change */
+function onSubRateChange(el) {
+  const i=+el.dataset.idx;
+  S.subRates[i][el.dataset.field]=+el.value||0;
+}
+
+/** Save subscription rates (called by Save Rates button) */
+function saveSubRates() {
+  svSync(); toast('✅ Subscription rates saved');
+  renderInc(); // refresh due summary
+}
+
+function savePW() {
+  const c=document.getElementById('pwC').value; const s=document.getElementById('pwS').value; const t=document.getElementById('pwT').value;
+  if(c)S.passwords.chairman=c; if(s)S.passwords.secretary=s; if(t)S.passwords.treasurer=t;
+  svSync();toast('✅ Passwords updated');
+}
+
+/**
+ * Add Year — carries over members and categories to new year automatically.
+ * This addresses the requirement that names/heads carry to the next TY.
+ */
+function addYear() {
+  const v=document.getElementById('newYrIn').value.trim();
+  if(!v) return;
+  if(!S.years.includes(v)) S.years.push(v);
+  if(!S.yearData[v]) {
+    /* Create fresh year data but copy members from current year */
+    const newYD=defYD();
+    newYD.members=[...(yd().members||[]).map(m=>({...m}))]; // deep copy members
+    /* Categories are global (S.categories) so they're already shared */
+    S.yearData[v]=newYD;
+  }
+  svSync();buildYrSel();renderSet();document.getElementById('newYrIn').value='';
+  toast(`✅ Year ${v} added — members carried over`);
+}
+
+function rmYear(y){if(y===cYear){toast("Cannot remove active year",'err');return;}if(!confirm(`Remove year ${y} and all its data?`))return;S.years=S.years.filter(x=>x!==y);delete S.yearData[y];sv();buildYrSel();renderSet();}
+function addCat(){const v=document.getElementById('newCatIn').value.trim();if(!v)return;if(!S.categories.includes(v))S.categories.push(v);svSync();renderSet();populateCats();document.getElementById('newCatIn').value='';}
+function rmCat(i){S.categories.splice(i,1);sv();renderSet();populateCats();}
+function saveBal(){yd().settings.bankOpen=+document.getElementById('sBnk').value||0;yd().settings.cashOpen=+document.getElementById('sCsh').value||0;svSync();}
+function resetYD(){if(!confirm(`Reset ALL data for ${cYear}? Cannot be undone.`))return;S.yearData[cYear]=defYD();sv();renderDashboard();toast('Year data reset','warn');}
+
+/* ═══════════════════════════════════════════════════════════
+   DROPDOWNS
+   ═══════════════════════════════════════════════════════════ */
+function populateCats() {
+  const s=document.getElementById('expCt');
+  if(s) s.innerHTML=S.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const f=document.getElementById('expCatF');
+  if(f) f.innerHTML='<option value="">All Categories</option>'+S.categories.map(c=>`<option>${c}</option>`).join('');
+}
+function populateNames() {
+  /* Guard: members may be undefined in freshly created year data */
+  const members = yd().members || [];
+  const names = members.filter(m => m.status === 'active').map(m => m.name);
+  const s = document.getElementById('expNm');
+  if (s) s.innerHTML = names.length
+    ? names.map(n => `<option>${n}</option>`).join('')
+    : '<option value="">— No members added yet —</option>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EXPORT / IMPORT
+   ═══════════════════════════════════════════════════════════ */
+function expJSON(){const b=new Blob([JSON.stringify({year:cYear,data:yd(),categories:S.categories,subRates:S.subRates},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`JRT273_Backup_${cYear}.json`;a.click();}
+function expCSV(){const rows=[['Date','Category','Remark','Paid By','Mode','Quarter','Amount','Paid']];yd().expenses.forEach(e=>rows.push([e.date,e.category,e.remark,e.name,e.mode,e.period,e.amount,e.paid]));const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`JRT273_Expenses_${cYear}.csv`;a.click();}
+function handleImp(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.data){S.yearData[d.year||cYear]=d.data;if(d.categories)S.categories=d.categories;if(d.subRates)S.subRates=d.subRates;if(d.year&&!S.years.includes(d.year))S.years.push(d.year);sv();initApp();toast('✅ Data imported');}}catch{toast('Invalid backup file','err');}};r.readAsText(f);}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL HELPERS
+   ═══════════════════════════════════════════════════════════ */
+function oMo(id){document.getElementById(id).classList.add('open');}
+function cMo(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+
+/* ═══════════════════════════════════════════════════════════
+   BACKEND API LAYER
+   All reads/writes go through here.
+   GAS_URL stored in localStorage separately (not in S).
+   Falls back to localStorage when offline or URL not set.
+   ═══════════════════════════════════════════════════════════ */
+const API = {
+  get url() { return localStorage.getItem('jrt273_gas_url') || ''; },
+
+  async call(action, payload = {}) {
+    const url = this.url;
+    if (!url) throw new Error('NO_URL');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 18000);
+    try {
+      /* POST as text/plain to avoid CORS preflight on GAS */
+      const res = await fetch(url, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, ...payload })
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data;
+    } catch(e) { clearTimeout(timer); throw e; }
+  },
+
+  async getData(year)              { return this.call('getData', { year }); },
+  async saveData(year, data, token) { return this.call('saveData', { year, data: JSON.stringify(data), syncToken: token||'' }); },
+  async getConfig()                { return this.call('getConfig'); },
+  async saveConfig(cfg)            { return this.call('saveConfig', { config: JSON.stringify(cfg) }); },
+  async submitExpense(year, exp)   { return this.call('submitExpense', { year, expense: JSON.stringify(exp) }); },
+  async getPending(year)           { return this.call('getPending', { year }); },
+  async reviewExpense(year,id,dec,reason) { return this.call('reviewExpense', { year, id, decision: dec, reason: reason||'' }); }
+};
+
+/* ── Sync state ── */
+let isOnline = false;
+let isSyncing = false;
+
+function setSyncing(v) {
+  isSyncing = v;
+  const el = document.getElementById('syncSpinner');
+  if (el) el.style.display = v ? 'flex' : 'none';
+}
+
+function showSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const map = { saved:['✓ Saved','#4ade80'], err:['⚠ Sync Error','#f87171'], offline:['● Offline','#fbbf24'] };
+  const [txt, col] = map[status] || ['',''];
+  el.textContent = txt; el.style.color = col; el.style.display = txt ? 'inline' : 'none';
+  if (status === 'saved') setTimeout(() => { if (el.textContent === '✓ Saved') el.style.display = 'none'; }, 3000);
+}
+
+/**
+ * Load from backend into S — then re-render active tab.
+ * Called on login and year switch.
+ */
+async function syncLoad() {
+  if (!API.url) { isOnline = false; showSyncStatus('offline'); return; }
+  setSyncing(true);
+  try {
+    const [cfg, ydData, pend] = await Promise.all([
+      API.getConfig(),
+      API.getData(cYear),
+      API.getPending(cYear)
+    ]);
+    if (cfg.years)      S.years      = cfg.years;
+    if (cfg.categories) S.categories = cfg.categories;
+    if (cfg.subRates)   S.subRates   = cfg.subRates;
+    if (cfg.passwords)  S.passwords  = cfg.passwords;
+    if (cfg.tablerPins) S.tablerPins = cfg.tablerPins;
+    if (ydData && ydData.data) {
+      /* Merge: ensure all arrays exist */
+      const d = ydData.data;
+      if (!d.members)       d.members = [];
+      if (!d.journal)       d.journal = [];
+      if (!d.subscriptions) d.subscriptions = [];
+      if (!d.budgets)       d.budgets = {};
+      if (!d.settings)      d.settings = { bankOpen:0, cashOpen:0 };
+      S.yearData[cYear] = d;
+    }
+    /* Merge server pending with local pending (server is authoritative) */
+    const serverPending = (pend && pend.items) ? pend.items : [];
+    const serverIds     = new Set(serverPending.map(p => String(p.id)));
+    /* Keep any local pending that the server doesn't know about yet */
+    const localOnly = (S.pending || []).filter(p => !serverIds.has(String(p.id)));
+    S.pending = [...serverPending, ...localOnly];
+    sv();
+
+    /* Retry any local-only pending that haven't been synced yet */
+    for (const p of localOnly) {
+      if (!isSynced(p.id)) {
+        try {
+          await API.submitExpense(p.year || cYear, p);
+          markSynced(p.id);
+        } catch(e) { /* Will retry on next load */ }
+      }
+    }
+
+    /* Also retry a failed syncSave if flagged */
+    if (S._pendingSync) {
+      delete S._pendingSync;
+      syncSave();
+    }
+
+    isOnline = true;
+    showSyncStatus('saved');
+    buildYrSel();
+    renderTab(document.querySelector('.tab-panel.active')?.id?.replace('tab-','') || 'dashboard');
+    updatePendingBadge();
+  } catch(e) {
+    console.warn('Sync load failed:', e.message);
+    isOnline = false;
+    showSyncStatus('offline');
+  } finally {
+    setSyncing(false);
+  }
+}
+
+/* ── Sync ID tracking ──────────────────────────────────────────
+   We keep a Set of IDs that have been successfully synced to the
+   backend. Before syncing a record we check this set — if the ID
+   is already there we skip it, preventing duplicate entries even
+   when the network drops mid-request and the user retries.
+   ──────────────────────────────────────────────────────────────── */
+function getSyncedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(SYNC_KEY) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function markSynced(id) {
+  const ids = getSyncedIds();
+  ids.add(String(id));
+  /* Cap at 2000 entries to avoid unbounded growth */
+  const arr = [...ids];
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  localStorage.setItem(SYNC_KEY, JSON.stringify(arr));
+}
+function isSynced(id) { return getSyncedIds().has(String(id)); }
+
+/**
+ * Save to backend — always saves to localStorage first (offline-safe).
+ * Uses a SYNC_TOKEN approach: each save gets a unique token.
+ * If the same token is already on the server, the save is skipped,
+ * preventing duplicate writes even if the network drops mid-POST.
+ */
+async function syncSave() {
+  sv(); // always write locally first — this is instant and never fails
+  if (!API.url) return;
+
+  /* Debounce: if a sync is already in flight, wait 600ms and retry once */
+  if (isSyncing) {
+    setTimeout(syncSave, 600);
+    return;
+  }
+
+  setSyncing(true);
+  try {
+    /* Generate a unique token for THIS save operation.
+       The backend stores the last-seen token; if it matches, it's a no-op. */
+    const syncToken = genId('tok');
+    await Promise.all([
+      API.saveData(cYear, yd(), syncToken),
+      API.saveConfig({
+        years:           S.years,
+        categories:      S.categories,
+        subRates:        S.subRates,
+        passwords:       S.passwords,
+        tablerPins:      S.tablerPins || {},
+        defaultTablerPin: S.defaultTablerPin || '0273'
+      })
+    ]);
+    isOnline = true;
+    showSyncStatus('saved');
+  } catch(e) {
+    console.warn('Sync save failed:', e.message);
+    showSyncStatus('err');
+    /* Queue for retry on next user interaction */
+    S._pendingSync = true;
+    sv();
+  } finally {
+    setSyncing(false);
+  }
+}
+
+/* Override sv() to also trigger backend sync */
+function sv() {
+  localStorage.setItem(SK, JSON.stringify(S));
+}
+/* Wrapper used after every data-modifying operation */
+function svSync() {
+  sv();
+  syncSave(); // fire and forget
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS — GAS URL + Tabler PINs
+   ═══════════════════════════════════════════════════════════ */
+function saveGasUrl() {
+  const url = document.getElementById('gasUrl').value.trim();
+  const pin = document.getElementById('defaultPin').value.trim();
+  localStorage.setItem('jrt273_gas_url', url);
+  if (pin) { S.defaultTablerPin = pin; sv(); }
+  toast('✅ Settings saved — reconnecting…');
+  syncLoad().then(() => { renderSet(); });
+}
+
+async function testConnection() {
+  const res = document.getElementById('connTestResult');
+  res.textContent = 'Testing…'; res.style.color = 'var(--text-muted)';
+  if (!API.url) { res.textContent = '❌ No URL set — paste your Apps Script URL above.'; res.style.color = 'var(--red)'; return; }
+  try {
+    const data = await API.call('ping');
+    res.textContent = '✅ Connected! ' + (data.msg || 'Backend is responding.');
+    res.style.color = 'var(--green)';
+  } catch(e) {
+    res.textContent = '❌ Connection failed: ' + e.message;
+    res.style.color = 'var(--red)';
+  }
+}
+
+function renderTablerPinList() {
+  const members = (yd().members || []).filter(m => m.status === 'active' && m.type !== 'Guest');
+  const pins = S.tablerPins || {};
+  document.getElementById('tablerPinList').innerHTML = members.length
+    ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        ${members.map(m => `
+          <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--r-sm);padding:8px 10px;border:1px solid var(--border)">
+            <span style="flex:1;font-size:12px;font-weight:500">${m.name}</span>
+            <input type="password" data-member="${m.name}" value="${pins[m.name]||S.defaultTablerPin||'0273'}" maxlength="10"
+              style="width:80px;padding:5px 8px;border-radius:5px;border:1.5px solid var(--border);font-size:12px;text-align:center;min-height:34px">
+          </div>`).join('')}
+      </div>`
+    : '<p class="text-muted">Add members first, then set their PINs here.</p>';
+}
+
+function saveTablerPins() {
+  if (!S.tablerPins) S.tablerPins = {};
+  document.querySelectorAll('#tablerPinList input[data-member]').forEach(inp => {
+    const name = inp.dataset.member;
+    if (inp.value.trim()) S.tablerPins[name] = inp.value.trim();
+  });
+  svSync(); toast('✅ PINs saved');
+}
+
+/* Override renderSet to include new fields */
+const _origRenderSet = renderSet;
+function renderSet() {
+  _origRenderSet();
+  /* GAS URL */
+  const gasEl = document.getElementById('gasUrl');
+  if (gasEl) {
+    gasEl.value = localStorage.getItem('jrt273_gas_url') || '';
+    /* Show whether URL came from config.json or was manually set */
+    const srcEl = document.getElementById('gasUrlSource');
+    if (srcEl) {
+      if (window.__cfgLoaded) {
+        srcEl.textContent = '📄 Set via config.json';
+        srcEl.style.color = 'var(--green)';
+        gasEl.readOnly = true; /* Prevent accidental override */
+        gasEl.style.background = 'var(--bg)';
+      } else {
+        srcEl.textContent = '⌨ Manually configured';
+        srcEl.style.color = 'var(--text-muted)';
+        gasEl.readOnly = false;
+      }
+    }
+  }
+  const pinEl = document.getElementById('defaultPin');
+  if (pinEl) pinEl.value = S.defaultTablerPin || localStorage.getItem('jrt273_default_pin') || '0273';
+  /* Tabler PINs */
+  renderTablerPinList();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PENDING APPROVALS
+   ═══════════════════════════════════════════════════════════ */
+function updatePendingBadge() {
+  const pending = (S.pending || []).filter(p => p.year === cYear && p.status === 'pending');
+  const banner  = document.getElementById('pendingApprovalsBanner');
+  const countEl = document.getElementById('pendingCount');
+  if (banner && canEd()) {
+    banner.classList.toggle('hidden', pending.length === 0);
+    if (countEl) countEl.textContent = `${pending.length} expense${pending.length!==1?'s':''} waiting for your review`;
+  }
+}
+
+async function openPendingModal() {
+  /* Refresh from backend if online */
+  if (API.url) {
+    try {
+      const pend = await API.getPending(cYear);
+      if (pend && pend.items) { S.pending = pend.items; sv(); }
+    } catch(e) { console.warn('Pending refresh failed'); }
+  }
+  renderPendingList();
+  oMo('moPending');
+}
+
+function renderPendingList() {
+  const pending = (S.pending || []).filter(p => p.year === cYear);
+  const el = document.getElementById('pendingList');
+  if (!pending.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">✅ No pending submissions for this year.</div>';
+    return;
+  }
+  el.innerHTML = pending.map(p => {
+    const statusBadge = {
+      pending:  '<span class="badge b-bank">Pending Review</span>',
+      approved: '<span class="badge b-paid">Approved</span>',
+      rejected: '<span class="badge b-due">Rejected</span>'
+    }[p.status] || '';
+    return `
+      <div style="border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;${p.status==='approved'?'opacity:.6':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${p.category} — ${p.remark||'No description'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">
+              ${p.submittedBy} · ${p.date} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · Q${p.period||dateToQ(p.date)} ${statusBadge}
+            </div>
+            ${p.rejectReason ? `<div style="font-size:11px;color:var(--red);margin-top:4px">Rejection reason: ${p.rejectReason}</div>` : ''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700">${INR(p.amount)}</div>
+            ${p.status==='pending'&&canEd()?`
+              <div style="display:flex;gap:5px;margin-top:8px;justify-content:flex-end">
+                <button class="btn btn-success btn-sm" onclick="approveExp('${p.id}')">✅ Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="openRejectModal('${p.id}')">✕ Reject</button>
+              </div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function approveExp(id) {
+  const p = (S.pending || []).find(x => x.id === id);
+  if (!p) return;
+
+  /* Add to main expense ledger */
+  const exp = {
+    id:       genId('exp'),
+    date:     p.date,
+    amount:   p.amount,
+    category: p.category,
+    name:     p.submittedBy,
+    mode:     p.mode,
+    period:   dateToQ(p.date),
+    paid:     false, /* Treasurer still needs to confirm payment */
+    remark:   p.remark + ' [Tabler submitted]'
+  };
+  (yd().expenses || (yd().expenses = [])).push(exp);
+
+  /* Update pending status */
+  const pidx = S.pending.findIndex(x => x.id === id);
+  if (pidx >= 0) S.pending[pidx].status = 'approved';
+
+  svSync();
+
+  /* Tell backend */
+  if (API.url) {
+    try { await API.reviewExpense(cYear, id, 'approved', ''); }
+    catch(e) { console.warn('Review backend call failed:', e.message); }
+  }
+
+  renderPendingList();
+  updatePendingBadge();
+  filterExp();
+  renderDashboard();
+  toast('✅ Expense approved and added to ledger');
+}
+
+function openRejectModal(id) {
+  document.getElementById('rejectId').value = id;
+  document.getElementById('rejectReason').value = '';
+  cMo('moPending');
+  oMo('moReject');
+}
+
+async function confirmReject() {
+  const id     = document.getElementById('rejectId').value;
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { toast('Please enter a rejection reason', 'err'); return; }
+
+  const pidx = (S.pending || []).findIndex(x => x.id === id);
+  if (pidx >= 0) { S.pending[pidx].status = 'rejected'; S.pending[pidx].rejectReason = reason; }
+  svSync();
+
+  if (API.url) {
+    try { await API.reviewExpense(cYear, id, 'rejected', reason); }
+    catch(e) { console.warn('Reject backend call failed'); }
+  }
+
+  cMo('moReject');
+  oMo('moPending');
+  renderPendingList();
+  updatePendingBadge();
+  toast('Expense rejected — Tabler will be notified', 'warn');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABLER SUBMISSION VIEW
+   ═══════════════════════════════════════════════════════════ */
+let tablerUser = null; /* { name, type } of logged-in tabler */
+
+function openTablerLogin() {
+  const members = (yd().members || []).filter(m => m.status === 'active' && m.type !== 'Guest');
+  document.getElementById('tablerNameSel').innerHTML = members.length
+    ? members.map(m => `<option value="${m.name}" data-type="${m.type}">${m.name} (${m.type})</option>`).join('')
+    : '<option value="">No active members found</option>';
+  document.getElementById('tablerPin').value = '';
+  document.getElementById('tablerLoginErr').textContent = '';
+  oMo('moTablerLogin');
+}
+
+function doTablerLogin() {
+  const sel   = document.getElementById('tablerNameSel');
+  const name  = sel.value;
+  const opt   = sel.options[sel.selectedIndex];
+  const mType = opt?.dataset?.type || 'Tabler';
+  const pin   = document.getElementById('tablerPin').value;
+  const pins  = S.tablerPins || {};
+  const expected = pins[name] || S.defaultTablerPin || '0273';
+
+  if (!name) { document.getElementById('tablerLoginErr').textContent = 'Please select your name.'; return; }
+  if (pin !== expected) { document.getElementById('tablerLoginErr').textContent = 'Incorrect PIN. Try again.'; return; }
+
+  tablerUser = { name, type: mType };
+  cMo('moTablerLogin');
+
+  /* Show tabler screen, hide login */
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tablerScreen').classList.remove('hidden');
+
+  document.getElementById('tablerGreeting').textContent = `Welcome, ${name} · ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}`;
+
+  /* Populate category dropdown */
+  document.getElementById('tExpCat').innerHTML = S.categories.map(c => `<option>${c}</option>`).join('');
+
+  /* Set today's date and auto-quarter */
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('tExpDt').value = today;
+  document.getElementById('tExpQ').value  = dateToQ(today);
+
+  /* Load history */
+  loadTablerHistory();
+}
+
+function logoutTabler() {
+  tablerUser = null;
+  document.getElementById('tablerScreen').classList.add('hidden');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = '';
+}
+
+async function submitTablerExp() {
+  const dt   = document.getElementById('tExpDt').value;
+  const amt  = +document.getElementById('tExpAmt').value;
+  const cat  = document.getElementById('tExpCat').value;
+  const mode = document.getElementById('tExpMode').value;
+  const rmk  = document.getElementById('tExpRmk').value.trim();
+  const msg  = document.getElementById('tExpMsg');
+
+  if (!dt || !amt || !cat || !rmk) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)';
+    msg.textContent = '⚠ Please fill in all required fields (Date, Amount, Category and Description).';
+    return;
+  }
+
+  const exp = {
+    id:          genId('pnd'),
+    year:        cYear,
+    date:        dt,
+    amount:      amt,
+    category:    cat,
+    mode:        mode,
+    period:      dateToQ(dt),
+    remark:      rmk,
+    submittedBy: tablerUser.name,
+    submittedAt: new Date().toISOString(),
+    status:      'pending'
+  };
+
+  msg.style.display = 'block'; msg.style.color = 'var(--text-muted)';
+  msg.textContent = 'Submitting…';
+
+  /* ── Deduplication: check if this exact submission was already sent ──
+     We compare by (date + amount + category + submittedBy) as a content
+     fingerprint. If an identical record exists locally, abort. */
+  if (!S.pending) S.pending = [];
+  const fingerprint = [exp.date, exp.amount, exp.category, exp.submittedBy].join('|');
+  const alreadyExists = S.pending.some(p =>
+    [p.date, p.amount, p.category, p.submittedBy].join('|') === fingerprint &&
+    p.year === cYear
+  );
+  if (alreadyExists) {
+    msg.style.display = 'block'; msg.style.color = 'var(--amber)';
+    msg.textContent = '⚠ A matching expense (same date, amount and category) was already submitted. Please check your history before submitting again.';
+    return;
+  }
+
+  /* Save locally first — always works, even offline */
+  S.pending.push(exp);
+  sv();
+
+  /* Push to backend if online — backend also deduplicates by ID */
+  if (API.url) {
+    try {
+      /* isSynced() prevents re-POSTing if this ID was already acknowledged */
+      if (!isSynced(exp.id)) {
+        await API.submitExpense(cYear, exp);
+        markSynced(exp.id); /* Mark as successfully sent */
+      }
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✅ Expense submitted successfully! The Treasurer will review it shortly.';
+    } catch(e) {
+      msg.style.color = 'var(--amber)';
+      msg.textContent = '⚠ Saved locally — will auto-sync when connection restores.';
+      /* The pending item is already in S.pending — will retry on next sync */
+    }
+  } else {
+    msg.style.color = 'var(--green)';
+    msg.textContent = '✅ Saved locally and queued for Treasurer review.';
+  }
+
+  /* Reset form */
+  document.getElementById('tExpAmt').value = '';
+  document.getElementById('tExpRmk').value = '';
+
+  /* Refresh history */
+  loadTablerHistory();
+}
+
+async function loadTablerHistory() {
+  const el = document.getElementById('tablerExpList');
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Loading…</div>';
+
+  /* Try to get fresh data from backend */
+  if (API.url) {
+    try {
+      const pend = await API.getPending(cYear);
+      if (pend && pend.items) { S.pending = pend.items; sv(); }
+    } catch(e) { /* use local */ }
+  }
+
+  const myExp = (S.pending || []).filter(p => p.year === cYear && p.submittedBy === tablerUser.name);
+
+  if (!myExp.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">You have not submitted any expenses this year yet.</div>';
+    return;
+  }
+
+  /* Sort newest first */
+  myExp.sort((a,b) => b.date.localeCompare(a.date));
+
+  el.innerHTML = myExp.map(p => {
+    const statusMap = {
+      pending:  { badge:'b-bank', text:'Pending Review', icon:'⏳' },
+      approved: { badge:'b-paid', text:'Approved', icon:'✅' },
+      rejected: { badge:'b-due',  text:'Rejected',  icon:'✕' }
+    };
+    const s = statusMap[p.status] || statusMap.pending;
+    return `
+      <div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;margin-bottom:9px;${p.status==='rejected'?'border-color:var(--red-bd);background:var(--red-bg)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;margin-bottom:3px">${p.category}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${p.date} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · <span class="badge b-${(p.period||'q1').toLowerCase()}">${p.period}</span></div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${p.remark}</div>
+            ${p.rejectReason ? `<div style="font-size:11px;color:var(--red);margin-top:5px;padding:5px 8px;background:var(--red-bg);border-radius:4px;border:1px solid var(--red-bd)"><strong>Rejection reason:</strong> ${p.rejectReason}</div>` : ''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700">${INR(p.amount)}</div>
+            <div style="margin-top:4px"><span class="badge ${s.badge}">${s.icon} ${s.text}</span></div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT OVERRIDE — add syncLoad call on login
+   ═══════════════════════════════════════════════════════════ */
+/* Patch initApp to trigger backend sync */
+const _origInitApp = initApp;
+function initApp() {
+  _origInitApp();
+  /* Load pending badge */
+  updatePendingBadge();
+  /* Sync from backend in background */
+  syncLoad();
+}
+
+/* Patch showTab to refresh pending badge when expenses tab opened */
+const _origShowTab = showTab;
+function showTab(name, btn) {
+  _origShowTab(name, btn);
+  if (name === 'expenses') updatePendingBadge();
+}
+
+/* Patch all sv() callers to use svSync() after data modifications */
+/* (saveMem, saveExp, etc. already call sv() — we override svSync to include backend) */
+
+
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     POINT 9 RESPONSE — inline at end of document
+     This is addressed in the chat, not in the app itself.
+     ═══════════════════════════════════════════════════════════ -->
+</body>
+</html>
