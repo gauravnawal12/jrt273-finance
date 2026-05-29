@@ -299,27 +299,64 @@ tr.unpaid-row:hover td{background:var(--amber-bd)!important}
     <div class="login-org">Jodhpur Round Table 273</div>
     <div class="login-title">Finance Manager</div>
     <div class="login-sub">Select your role and enter your password to continue</div>
+
+    <!-- Role selection buttons -->
     <div class="role-btns">
-      <button class="role-btn" onclick="selRole('chairman',this)"><div class="role-icon-wrap">👑</div><div><div class="role-name">Chairman</div><div class="role-desc">View-only access to all records</div></div></button>
-      <button class="role-btn" onclick="selRole('secretary',this)"><div class="role-icon-wrap">📋</div><div><div class="role-name">Secretary</div><div class="role-desc">View-only access to all records</div></div></button>
-      <button class="role-btn" onclick="selRole('treasurer',this)"><div class="role-icon-wrap">💼</div><div><div class="role-name">Treasurer</div><div class="role-desc">Full edit and manage access</div></div></button>
+      <button class="role-btn" onclick="selRole('chairman',this)">
+        <div class="role-icon-wrap">👑</div>
+        <div><div class="role-name">Chairman</div><div class="role-desc">View-only access to all records</div></div>
+      </button>
+      <button class="role-btn" onclick="selRole('secretary',this)">
+        <div class="role-icon-wrap">📋</div>
+        <div><div class="role-name">Secretary</div><div class="role-desc">View-only access to all records</div></div>
+      </button>
+      <button class="role-btn" onclick="selRole('treasurer',this)">
+        <div class="role-icon-wrap">💼</div>
+        <div><div class="role-name">Treasurer</div><div class="role-desc">Full edit and manage access</div></div>
+      </button>
     </div>
+
+    <!-- Password field (shown after role selected) -->
+    <div id="pwWrap" class="pw-wrap hidden">
+      <input type="password" id="pwIn" placeholder="Enter password"
+             onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+    </div>
+
+    <!-- Error message -->
     <div id="lErr" class="login-err"></div>
 
-      <!-- Tabler quick-access button on login screen -->
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-align:center">OR</div>
-        <button class="role-btn" onclick="openTablerLogin()" style="border-color:var(--gold);background:var(--gold-light)">
-          <div class="role-icon-wrap" style="background:var(--gold)">🏷️</div>
-          <div><div class="role-name" style="color:var(--text-primary)">I am a Tabler</div><div class="role-desc">Submit and track your expenses</div></div>
-        </button>
-      </div>
-    <div id="pwWrap" class="pw-wrap hidden">
-      <input type="password" id="pwIn" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
-    </div>
+    <!-- Sign In button -->
     <button class="btn-login" onclick="doLogin()">Sign In →</button>
-    <div style="margin-top:14px;text-align:center">
-      <button onclick="resetPasswords()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);text-decoration:underline;font-family:'Inter',sans-serif">
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--text-muted);font-weight:500;white-space:nowrap">OR CONTINUE AS</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+
+    <!-- Tabler access button — distinct gold styling, clearly separated -->
+    <button onclick="openTablerLogin()" style="
+      width:100%;display:flex;align-items:center;gap:14px;
+      padding:13px 16px;border-radius:var(--r);
+      border:2px solid var(--gold);background:var(--gold-light);
+      cursor:pointer;font-family:'Inter',sans-serif;text-align:left;
+      transition:all var(--t);" onmouseover="this.style.background='#fde8a0'"
+      onmouseout="this.style.background='var(--gold-light)'">
+      <div style="width:38px;height:38px;background:var(--gold);border-radius:var(--r-sm);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:18px;flex-shrink:0">🏷️</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary)">I am a Tabler</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px">Submit and track your expenses</div>
+      </div>
+    </button>
+
+    <!-- Emergency reset link -->
+    <div style="margin-top:16px;text-align:center">
+      <button onclick="resetPasswords()" style="background:none;border:none;cursor:pointer;
+        font-size:11px;color:var(--text-muted);text-decoration:underline;
+        font-family:'Inter',sans-serif;">
         Reset all passwords to defaults
       </button>
     </div>
@@ -589,6 +626,10 @@ tr.unpaid-row:hover td{background:var(--amber-bd)!important}
 
   </main>
 
+
+</div><!-- /app -->
+
+<!-- TABLER SCREEN — intentionally outside #app so it shows independently -->
   <!-- ═══ TABLER SUBMISSION SCREEN ═══════════════════════════ -->
   <div id="tablerScreen" class="hidden">
     <div style="max-width:680px;margin:0 auto;padding:16px">
@@ -631,7 +672,6 @@ tr.unpaid-row:hover td{background:var(--amber-bd)!important}
     </div>
   </div>
 
-</div><!-- /app -->
 
 
 <!-- ═══ MODALS ════════════════════════════════════════════════ -->
@@ -914,7 +954,7 @@ function load() {
         if (!yd.settings)       yd.settings = { bankOpen:0, cashOpen:0 };
       });
       /* Ensure subscription rates exist */
-      if (!parsed.subRates) parsed.subRates = defSubRates();
+      if (!parsed.subRates || !parsed.subRates.length) parsed.subRates = defSubRates();
       /* Ensure passwords always exist with defaults as fallback */
       if (!parsed.passwords)              parsed.passwords = {};
       if (!parsed.passwords.chairman)     parsed.passwords.chairman  = 'chairman123';
@@ -949,7 +989,7 @@ if (!S.passwords)                S.passwords    = {};
 if (!S.passwords.chairman)       S.passwords.chairman  = 'chairman123';
 if (!S.passwords.secretary)      S.passwords.secretary = 'secretary123';
 if (!S.passwords.treasurer)      S.passwords.treasurer = 'treasurer123';
-if (!S.subRates)                 S.subRates     = defSubRates();
+if (!S.subRates || !S.subRates.length) S.subRates = defSubRates();
 /* Guard: years array must always include currentYear */
 if (!S.years || !S.years.length) S.years = [cYear];
 if (!S.years.includes(cYear))    S.years.unshift(cYear);
@@ -1822,7 +1862,12 @@ function renderSet() {
   document.getElementById('sCsh').value=st.cashOpen;
 
   /* Render subscription rate rows — using DOM manipulation for reliability */
-  const rates = S.subRates || defSubRates();
+  /* Always ensure 3 rate rows exist - recover from empty/corrupt state */
+  if (!S.subRates || !S.subRates.length || S.subRates.length < 3) {
+    S.subRates = defSubRates();
+    sv();
+  }
+  const rates = S.subRates;
   const srEl = document.getElementById('subRateRows');
   if (srEl) {
     srEl.innerHTML = '';
@@ -2039,16 +2084,17 @@ async function syncLoad() {
       API.getData(cYear),
       API.getPending(cYear)
     ]);
-    if (cfg.years)      S.years      = cfg.years;
-    if (cfg.categories) S.categories = cfg.categories;
-    if (cfg.subRates)   S.subRates   = cfg.subRates;
-    /* Only overwrite passwords if backend returns a fully populated object.
-       Prevents an unconfigured backend (empty Config sheet) from wiping
-       local passwords and locking everyone out. */
-    if (cfg.passwords && cfg.passwords.treasurer) {
+    /* Only merge backend values if they are non-empty.
+       An unconfigured backend returns empty arrays/objects — we must
+       not let those overwrite good local defaults. */
+    if (cfg.years      && cfg.years.length)      S.years      = cfg.years;
+    if (cfg.categories && cfg.categories.length) S.categories = cfg.categories;
+    if (cfg.subRates   && cfg.subRates.length)   S.subRates   = cfg.subRates;
+    if (cfg.tablerPins && Object.keys(cfg.tablerPins).length) S.tablerPins = cfg.tablerPins;
+    /* Passwords: only overwrite if backend has all three roles populated */
+    if (cfg.passwords && cfg.passwords.treasurer && cfg.passwords.chairman) {
       S.passwords = cfg.passwords;
     }
-    if (cfg.tablerPins) S.tablerPins = cfg.tablerPins;
     if (ydData && ydData.data) {
       /* Merge: ensure all arrays exist */
       const d = ydData.data;
@@ -2381,10 +2427,11 @@ function doTablerLogin() {
   tablerUser = { name, type: mType };
   cMo('moTablerLogin');
 
-  /* Show tabler screen, hide login */
+  /* Show tabler screen — tablerScreen is outside #app so works independently */
   document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('app').style.display = 'none';
+  /* #app stays as-is (hidden class) — tablerScreen is its own top-level div */
   document.getElementById('tablerScreen').classList.remove('hidden');
+  document.getElementById('tablerScreen').style.display = 'block';
 
   document.getElementById('tablerGreeting').textContent = `Welcome, ${name} · ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}`;
 
@@ -2402,9 +2449,10 @@ function doTablerLogin() {
 
 function logoutTabler() {
   tablerUser = null;
-  document.getElementById('tablerScreen').classList.add('hidden');
+  const ts = document.getElementById('tablerScreen');
+  ts.classList.add('hidden');
+  ts.style.display = '';
   document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('app').style.display = '';
 }
 
 async function submitTablerExp() {
