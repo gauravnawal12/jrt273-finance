@@ -219,9 +219,9 @@ tr.unpaid-row:hover td{background:var(--amber-bd)!important}
 .sub-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
 
 /* ── SUBSCRIPTION RATE TABLE in Settings ── */
-.sub-rate-row{display:grid;grid-template-columns:130px 1fr 1fr 1fr 40px;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--border)}
-.sub-rate-row .type-label{font-size:12px;font-weight:600;color:var(--text-primary)}
-@media(max-width:560px){.sub-rate-row{grid-template-columns:1fr 1fr;gap:6px}.sub-rate-row .type-label{grid-column:1/-1}}
+/* sub-rate-row uses inline styles in renderSet() for reliability */
+.sub-rate-row input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,40,68,.1)}
+/* sub-rate-row mobile handled by inline styles in renderSet() */
 
 /* ── PAGINATION ── */
 .pag{display:flex;gap:4px;align-items:center;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
@@ -1780,25 +1780,44 @@ function renderSet() {
   document.getElementById('sBnk').value=st.bankOpen;
   document.getElementById('sCsh').value=st.cashOpen;
 
-  /* Render subscription rate rows */
-  const rates=S.subRates||defSubRates();
-  document.getElementById('subRateRows').innerHTML=rates.map((r,i)=>`
-    <div class="sub-rate-row" data-idx="${i}">
-      <div class="type-label">${r.type}</div>
-      <div class="fg" style="margin-bottom:0">
-        <div class="field-label" style="font-size:10px;margin-bottom:3px">Annual (₹) <span class="help-icon">?<span class="tip">Total annual subscription for this member type.</span></span></div>
-        <input type="number" data-idx="${i}" data-field="annual" value="${r.annual}" min="0" style="min-height:38px;font-size:12px" oninput="onSubRateChange(this)">
-      </div>
-      <div class="fg" style="margin-bottom:0">
-        <div class="field-label" style="font-size:10px;margin-bottom:3px">Cash Component (₹) <span class="help-icon">?<span class="tip">How much of the annual subscription is expected in Cash.</span></span></div>
-        <input type="number" data-idx="${i}" data-field="cash" value="${r.cash}" min="0" style="min-height:38px;font-size:12px" oninput="onSubRateChange(this)">
-      </div>
-      <div class="fg" style="margin-bottom:0">
-        <div class="field-label" style="font-size:10px;margin-bottom:3px">Bank Component (₹) <span class="help-icon">?<span class="tip">How much is expected via Bank/UPI/Transfer.</span></span></div>
-        <input type="number" data-idx="${i}" data-field="bank" value="${r.bank}" min="0" style="min-height:38px;font-size:12px" oninput="onSubRateChange(this)">
-      </div>
-      <div></div>
-    </div>`).join('');
+  /* Render subscription rate rows — using DOM manipulation for reliability */
+  const rates = S.subRates || defSubRates();
+  const srEl = document.getElementById('subRateRows');
+  if (srEl) {
+    srEl.innerHTML = '';
+    /* Header row */
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:grid;grid-template-columns:130px 1fr 1fr 1fr;gap:8px;margin-bottom:6px;padding:0 10px';
+    hdr.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Member Type</div>'
+      + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Annual (₹)</div>'
+      + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Cash Component (₹)</div>'
+      + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Bank Component (₹)</div>';
+    srEl.appendChild(hdr);
+    /* One row per member type */
+    rates.forEach(function(r, i) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:130px 1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--border)';
+      row.setAttribute('data-idx', i);
+      /* Type label */
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'font-size:12px;font-weight:700;color:var(--text-primary)';
+      lbl.textContent = r.type;
+      row.appendChild(lbl);
+      /* Three number inputs */
+      ['annual','cash','bank'].forEach(function(field) {
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.min  = '0';
+        inp.value = r[field] || 0;
+        inp.setAttribute('data-idx', i);
+        inp.setAttribute('data-field', field);
+        inp.style.cssText = 'min-height:40px;font-size:13px;padding:8px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);font-family:Inter,sans-serif;width:100%;background:var(--surface)';
+        inp.oninput = function() { onSubRateChange(this); };
+        row.appendChild(inp);
+      });
+      srEl.appendChild(row);
+    });
+  }
 
 
   /* ── GAS URL field & source indicator ── */
