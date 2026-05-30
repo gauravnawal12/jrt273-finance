@@ -2568,18 +2568,31 @@ function renderSubDueSummary() {
     const paid = getMemberPaid(m.name);
     const rate = getSubRate(m.type);
     if (rate.annual===0) return '';
+    /* Determine display for each due value:
+       positive = still owed (red)
+       zero     = cleared (dash)
+       negative = overpaid in that mode (amber, shows as "Overpaid ₹X") */
+    const fmtDue = (val) => {
+      if (val === 0)  return { text:'✅', cls:'' };
+      if (val > 0)    return { text: INR(val),                cls:'amt-red' };
+      return          { text: 'Overpaid ' + INR(Math.abs(val)), cls:'warn' };
+    };
+    const dTotal = fmtDue(due.total);
+    const dCash  = fmtDue(due.cash);
+    const dBank  = fmtDue(due.bank);
     return `<tr>
       <td style="font-weight:500">${m.name}</td>
       <td><span class="badge b-${m.type==='HT'?'ht':'tabler'}">${m.type}</span></td>
       <td class="amt">${INR(rate.annual)}</td>
       <td class="amt safe">${INR(paid.total)}</td>
-      <td class="amt ${due.total>0?'amt-red':''}">${due.total>0?INR(due.total):'—'}</td>
-      <td class="amt ${due.cash>0?'amt-red':''}">${due.cash>0?INR(due.cash):'—'}</td>
-      <td class="amt ${due.bank>0?'amt-red':''}">${due.bank>0?INR(due.bank):'—'}</td>
+      <td class="amt ${dTotal.cls}">${dTotal.text}</td>
+      <td class="amt ${dCash.cls}">${dCash.text}</td>
+      <td class="amt ${dBank.cls}">${dBank.text}</td>
     </tr>`;
   }).filter(Boolean).join('');
 
-  const totalDue  = members.reduce((a,m)=>a+getMemberDue(m.name,m.type).total,0);
+  /* Sum only positive dues for the total row */
+  const totalDue  = members.reduce((a,m)=>a+Math.max(0,getMemberDue(m.name,m.type).total),0);
   const totalPaid = members.reduce((a,m)=>a+getMemberPaid(m.name).total,0);
 
   const card = document.getElementById('subDueSummaryCard');
@@ -2617,8 +2630,8 @@ function renderSubTbl() {
      <td class="amt">${INR(s.amount)}</td>
      <td><span class="badge b-${(s.mode||'cash').toLowerCase()}">${s.mode||'Cash'}</span></td>
      <td class="amt">${INR(getMemberPaid(s.memberName).total)}</td>
-     <td class="amt ${getMemberDue(s.memberName,s.memberType).total>0?'amt-red':''}">
-       ${getMemberDue(s.memberName,s.memberType).total>0?INR(getMemberDue(s.memberName,s.memberType).total):'—'}</td>
+     <td class="amt ${(()=>{const d=getMemberDue(s.memberName,s.memberType).total; return d>0?'amt-red':d<0?'warn':''})()}">
+       ${(()=>{const d=getMemberDue(s.memberName,s.memberType).total; return d>0?INR(d):d<0?'Overpaid '+INR(Math.abs(d)):'✅'})()}</td>
      ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openSubMo(this.dataset.id)" data-id="${s.id}">✏️</button><button class="btn btn-danger btn-sm" onclick="delSub(this.dataset.id)" data-id="${s.id}">🗑</button></div></td>`:''}</tr>`
   ).join('');
   document.getElementById('subTbl').innerHTML = rows+
@@ -2653,21 +2666,38 @@ function prefillSubAmt() {
   const mName=sel.value;
   // Find due amount and suggest it
   const due=getMemberDue(mName, mType);
-  document.getElementById('subAmt').value = due.total>0 ? due.total : rate.annual;
-  // Pre-select mode based on rate
-  document.getElementById('subMode').value = rate.cash >= rate.bank ? 'Cash' : 'Bank';
+  /* Prefill the outstanding amount (positive = still owed, 0 = settled) */
+  const outstanding = Math.max(0, due.total);
+  document.getElementById('subAmt').value = outstanding > 0 ? outstanding : '';
+  /* Pre-select mode based on which component has highest due */
+  const cashDue = Math.max(0, due.cash);
+  const bankDue = Math.max(0, due.bank);
+  document.getElementById('subMode').value = cashDue >= bankDue ? 'Cash' : 'Bank';
   showSubDueInfo(mName, mType);
 }
 
 function showSubDueInfo(memberName, memberType) {
   const due=getMemberDue(memberName, memberType);
   const infoEl=document.getElementById('subDueInfo');
-  if (due.total>0) {
-    infoEl.style.display='block';
-    infoEl.innerHTML=`<strong>Outstanding dues for ${memberName}:</strong> Total ${INR(due.total)} 
-      ${due.cash>0?` · Cash ${INR(due.cash)}`:''}${due.bank>0?` · Bank ${INR(due.bank)}`:''}`;
+  /* Show info for any imbalance — positive = owed, negative = overpaid */
+  const hasCashIssue = due.cash !== 0;
+  const hasBankIssue = due.bank !== 0;
+  if (due.total !== 0 || hasCashIssue || hasBankIssue) {
+    infoEl.style.display = 'block';
+    const fmtMode = (val, label) => {
+      if (val === 0) return '';
+      return val > 0
+        ? ` · ${label} due: ${INR(val)}`
+        : ` · ${label} overpaid: ${INR(Math.abs(val))}`;
+    };
+    const totalStr = due.total > 0
+      ? `<strong style="color:var(--red)">Total outstanding: ${INR(due.total)}</strong>`
+      : due.total < 0
+        ? `<strong style="color:var(--amber)">Total overpaid: ${INR(Math.abs(due.total))}</strong>`
+        : `<strong style="color:var(--green)">Fully settled</strong>`;
+    infoEl.innerHTML = `${totalStr}${fmtMode(due.cash,'Cash')}${fmtMode(due.bank,'Bank')}`;
   } else {
-    infoEl.style.display='none';
+    infoEl.style.display = 'none';
   }
 }
 
@@ -3171,22 +3201,19 @@ const API = {
   async call(action, payload = {}) {
     const url = this.url;
     if (!url) throw new Error('NO_URL');
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 18000);
+    /* No AbortController — GAS can take 20-30s on cold start.
+       The browser's own network timeout handles hung requests. */
     try {
-      /* POST as text/plain to avoid CORS preflight on GAS */
       const res = await fetch(url, {
         method: 'POST',
-        signal: ctrl.signal,
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, ...payload })
       });
-      clearTimeout(timer);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       return data;
-    } catch(e) { clearTimeout(timer); throw e; }
+    } catch(e) { throw e; }
   },
 
   async getData(year)              { return this.call('getData', { year }); },
@@ -3315,20 +3342,23 @@ function isSynced(id) { return getSyncedIds().has(String(id)); }
  * If the same token is already on the server, the save is skipped,
  * preventing duplicate writes even if the network drops mid-POST.
  */
+let _syncTimer = null;
 async function syncSave() {
-  sv(); // always write locally first — this is instant and never fails
+  sv(); // always write locally first — instant, never fails
   if (!API.url) return;
+  /* Debounce: coalesce rapid saves into one request after 800ms */
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(_doSync, 800);
+}
 
-  /* Debounce: if a sync is already in flight, wait 600ms and retry once */
-  if (isSyncing) {
-    setTimeout(syncSave, 600);
+async function _doSync() {
+  _syncTimer = null;
+  if (!API.url || isSyncing) {
+    if (isSyncing) setTimeout(_doSync, 1000);
     return;
   }
-
   setSyncing(true);
   try {
-    /* Generate a unique token for THIS save operation.
-       The backend stores the last-seen token; if it matches, it's a no-op. */
     const syncToken = genId('tok');
     await Promise.all([
       API.saveData(cYear, yd(), syncToken),
@@ -3346,7 +3376,6 @@ async function syncSave() {
   } catch(e) {
     console.warn('Sync save failed:', e.message);
     showSyncStatus('err');
-    /* Queue for retry on next user interaction */
     S._pendingSync = true;
     sv();
   } finally {
