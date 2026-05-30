@@ -1038,18 +1038,30 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
 })();
 /* ── FY DROPDOWN ─────────────────────────────────────────── */
 function buildYrSel() {
+  /* Guard: current year must always be in the list */
   if (!S.years || !S.years.length) S.years = [cYear];
   if (!S.years.includes(cYear))    S.years.unshift(cYear);
-  /* Update the select in the dropdown */
-  const sel = document.getElementById('yrSel');
-  if (sel) {
-    sel.innerHTML = S.years
-      .map(y => `<option value="${y}"${y===cYear?' selected':''}>${y}</option>`)
-      .join('');
-  }
-  /* Update the label link */
+
+  /* Update the visible FY label */
   const lbl = document.getElementById('fyLabel');
   if (lbl) lbl.textContent = cYear;
+
+  /* Render year options as clickable buttons in the dropdown */
+  const list = document.getElementById('fyMenuList');
+  if (list) {
+    list.innerHTML = S.years.map(y =>
+      `<button class="fy-menu-item${y === cYear ? ' active' : ''}"
+               onclick="changeYear('${y}'); closeFyMenu()"
+               style="display:block;width:100%;padding:9px 14px;border:none;
+                      background:${y === cYear ? 'var(--navy-ghost)' : 'none'};
+                      font-size:13px;font-weight:${y === cYear ? '700' : '500'};
+                      color:${y === cYear ? 'var(--navy)' : 'var(--t1)'};
+                      cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;
+                      border-bottom:1px solid var(--border);">
+         ${y === cYear ? '✓ ' : ''}${y}
+       </button>`
+    ).join('');
+  }
 }
 function toggleFyMenu(e) {
   e.stopPropagation();
@@ -1111,6 +1123,56 @@ function applyNavPerms() {
   if (moreSettings) moreSettings.style.display = edit ? '' : 'none';
   const desktopSettings = document.getElementById('settingsTabBtn');
   if (desktopSettings) desktopSettings.style.display = edit ? '' : 'none';
+}
+
+/* ── CHANGE PASSWORD MODAL — all roles ──────────────────────
+   Each user can only change their own role's password.
+   Accessible via the lock icon in the header.
+   ─────────────────────────────────────────────────────────── */
+function openChangePwModal() {
+  /* Clear all fields and message */
+  ['cpwCurrent','cpwNew','cpwConfirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const msg = document.getElementById('cpwMsg');
+  if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  oMo('moChangePw');
+  /* Focus first field */
+  setTimeout(() => {
+    const el = document.getElementById('cpwCurrent');
+    if (el) el.focus();
+  }, 200);
+}
+
+function saveChangePw() {
+  const current = (document.getElementById('cpwCurrent')?.value || '').trim();
+  const newPw   = (document.getElementById('cpwNew')?.value || '').trim();
+  const confirm = (document.getElementById('cpwConfirm')?.value || '').trim();
+  const msgEl   = document.getElementById('cpwMsg');
+
+  const setMsg = (text, ok) => {
+    if (!msgEl) return;
+    msgEl.textContent = text;
+    msgEl.style.color = ok ? 'var(--green)' : 'var(--red)';
+  };
+
+  /* Validations */
+  if (!current)                          { setMsg('Please enter your current password.', false); return; }
+  if (current !== S.passwords[cRole])    { setMsg('Current password is incorrect.', false); return; }
+  if (!newPw || newPw.length < 6)        { setMsg('New password must be at least 6 characters.', false); return; }
+  if (newPw !== confirm)                 { setMsg('Passwords do not match.', false); return; }
+  if (newPw === current)                 { setMsg('New password must be different from current.', false); return; }
+
+  /* Save — only the logged-in role's password */
+  S.passwords[cRole] = newPw;
+  svSync();
+
+  setMsg('✅ Password updated successfully!', true);
+  toast('✅ Password updated');
+
+  /* Auto-close after 1.5s */
+  setTimeout(() => cMo('moChangePw'), 1500);
 }
 
 </script>
@@ -1199,15 +1261,20 @@ function applyNavPerms() {
         <!-- FY link: shows current year, click to open dropdown -->
         <div class="fy-wrap" id="fyWrap">
           <button class="fy-btn" onclick="toggleFyMenu(event)" id="fyBtn" title="Switch financial year">
-            <span id="fyLabel">2024-25</span>
+            <span id="fyLabel"></span>
             <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="margin-left:3px;opacity:.6">
               <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </button>
           <div class="fy-menu hidden" id="fyMenu">
-            <select id="yrSel" onchange="changeYear(this.value); closeFyMenu()" size="6" style="border:none;outline:none;font-size:13px;background:none;width:100%;padding:0;min-height:auto;box-shadow:none"></select>
+            <!-- Rendered as buttons by buildYrSel() for reliable tap/click -->
+            <div id="fyMenuList"></div>
           </div>
         </div>
+        <!-- Change password — visible to all roles -->
+        <button class="user-btn" onclick="openChangePwModal()" title="Change my password" id="changePwBtn" style="padding:4px 8px;min-width:32px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </button>
         <button class="user-btn" onclick="logout()" id="uPill" title="Tap to sign out">
           <span id="uPillIcon"></span>
           <span id="uPillText" class="upill-text"></span>
@@ -1789,6 +1856,36 @@ function applyNavPerms() {
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
+<!-- Change Password Modal — accessible to all roles -->
+<div class="mo" id="moChangePw">
+  <div class="mo-box" style="max-width:400px">
+    <div class="mo-head">
+      <div class="mo-title">🔐 Change My Password</div>
+      <button class="mo-close" onclick="cMo('moChangePw')">✕</button>
+    </div>
+    <div class="mo-body">
+      <p class="text-muted" style="margin-bottom:16px">You can only change your own password. Enter your current password to verify your identity.</p>
+      <div class="fg">
+        <div class="field-label">Current Password</div>
+        <input type="password" id="cpwCurrent" placeholder="Enter your current password" autocomplete="current-password">
+      </div>
+      <div class="fg">
+        <div class="field-label">New Password</div>
+        <input type="password" id="cpwNew" placeholder="Minimum 6 characters" autocomplete="new-password">
+      </div>
+      <div class="fg">
+        <div class="field-label">Confirm New Password</div>
+        <input type="password" id="cpwConfirm" placeholder="Repeat new password" autocomplete="new-password">
+      </div>
+      <div id="cpwMsg" style="font-size:12px;min-height:18px;margin-top:4px"></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="cMo('moChangePw')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveChangePw()">Update Password</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="tst" role="alert"></div>
 
 <!-- ═══ JAVASCRIPT ════════════════════════════════════════════ -->
@@ -2067,17 +2164,16 @@ function initApp() {
   syncLoad();             // pull latest data from backend (non-blocking)
 }
 
-function buildYrSel() {
-  /* Guard: ensure years array is populated */
-  if (!S.years || !S.years.length) S.years = [cYear];
-  if (!S.years.includes(cYear))    S.years.unshift(cYear);
-
-  document.getElementById('yrSel').innerHTML = S.years
-    .map(y => `<option value="${y}"${y===cYear?' selected':''}>${y}</option>`).join('');
-}
+/* buildYrSel: single definition above at line ~36563 */
 
 function changeYear(y) {
   cYear = y; S.currentYear = y; sv();
+  /* Update the FY label in header immediately */
+  const lbl = document.getElementById('fyLabel');
+  if (lbl) lbl.textContent = cYear;
+  /* Update select selected state */
+  const sel = document.getElementById('yrSel');
+  if (sel) sel.value = cYear;
   populateCats(); populateNames();
   const active = document.querySelector('.tab-panel.active');
   if (active) renderTab(active.id.replace('tab-',''));
