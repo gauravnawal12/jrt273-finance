@@ -786,23 +786,29 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
   .stat-card { padding: 12px; }
   .s-val { font-size: 17px; }
   .page-title { font-size: 16px; }
-
-  /* Stack buttons on mobile */
   .page-header { gap: 8px; }
   .page-header .btn { min-height: 40px; }
-
-  /* Wider touch targets in tables */
-  td, th { padding: 10px 10px; }
-
-  /* Filter bar scrolls horizontally */
+  td, th { padding: 9px 8px; font-size: 12px; }
   .filter-bar { flex-wrap: nowrap; overflow-x: auto; padding: 8px; }
-  .fi-search { min-width: 130px; }
-
-  /* Cards take full width */
-  .card { padding: 13px; }
-
-  /* Form grids collapse to single column */
+  .fi-search { min-width: 120px; }
+  .card { padding: 12px; }
   .fg.r2, .fg.r3 { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Header: hide subtitle on very small screens, compact controls */
+  .logo-text-sub { display: none; }
+  .header-top { padding: 0 10px; height: 50px; }
+  .logo-mark { width: 30px; height: 30px; font-size: 11px; }
+  .logo-text-main { font-size: 13px; }
+  .yr-select-wrap { padding: 4px 7px; }
+  .yr-select-wrap select { font-size: 11px; }
+  /* Hide user pill text on mobile — show only icon + arrow */
+  .upill-text { display: none; }
+  .user-btn { padding: 4px 8px; font-size: 12px; }
+  /* Tabs: smaller padding */
+  .tab-btn { padding: 0 10px; font-size: 11px; }
+  .tab-nav { height: 40px; }
+  /* Sync status hidden on mobile to save space */
+  #syncStatus { display: none !important; }
 }
 
 /* ── DESKTOP STAT GRID ── */
@@ -940,14 +946,26 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
 <div id="app" class="hidden">
   <header class="app-header">
     <div class="header-top">
+      <!-- Logo — compact on mobile -->
       <div class="logo">
         <div class="logo-mark">RT</div>
-        <div><div class="logo-text-main">JRT 273 Finance</div><div class="logo-text-sub">Jodhpur Round Table 273</div></div>
+        <div class="logo-text">
+          <div class="logo-text-main">JRT 273</div>
+          <div class="logo-text-sub">Jodhpur Round Table</div>
+        </div>
       </div>
+      <!-- Controls — year + sync + user -->
       <div class="header-controls">
-        <div class="yr-select-wrap" title="Switch financial year"><span class="yr-label">Year</span><select id="yrSel" onchange="changeYear(this.value)"></select></div>
-        <span id="syncStatus" style="display:none;font-size:11px;font-weight:600;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,.1)"></span>
-        <button class="user-btn" onclick="logout()" id="uPill" title="Click to sign out"><span id="uPillText"></span> <span style="opacity:.5;font-size:10px">↩</span></button>
+        <span id="syncStatus"></span>
+        <div class="yr-select-wrap" title="Switch financial year">
+          <span class="yr-label">FY</span>
+          <select id="yrSel" onchange="changeYear(this.value)"></select>
+        </div>
+        <button class="user-btn" onclick="logout()" id="uPill" title="Tap to sign out">
+          <span id="uPillIcon"></span>
+          <span id="uPillText" class="upill-text"></span>
+          <span style="opacity:.4;font-size:10px">↩</span>
+        </button>
       </div>
     </div>
     <div id="roBanner" class="ro-banner hidden">⚠️ View-only mode — sign in as Treasurer to add or edit records</div>
@@ -1009,11 +1027,38 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
         <div class="alert-banner-amt" id="unpaidTotal"></div>
       </div>
       <div class="filter-bar">
-        <input class="fi fi-search" type="text" placeholder="🔍 Search category, name, remark…" oninput="filterExp()" id="expSrch">
-        <select class="fi" onchange="filterExp()" id="expCatF"><option value="">All Categories</option></select>
-        <select class="fi" onchange="filterExp()" id="expQF"><option value="">All Quarters</option><option value="Q1">Q1 — Jul–Sep</option><option value="Q2">Q2 — Oct–Dec</option><option value="Q3">Q3 — Jan–Mar</option><option value="Q4">Q4 — Apr–Jun</option></select>
-        <select class="fi" onchange="filterExp()" id="expModeF"><option value="">All Modes</option><option>Cash</option><option>Bank</option></select>
-        <select class="fi" onchange="filterExp()" id="expPaidF"><option value="">All Status</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
+        <!-- Search -->
+        <input class="fi fi-search" type="text" placeholder="🔍 Search…" oninput="filterExp()" id="expSrch">
+        <!-- Filters -->
+        <select class="fi" onchange="filterExp()" id="expCatF" title="Filter by category">
+          <option value="">All Categories</option>
+        </select>
+        <select class="fi" onchange="filterExp()" id="expQF" title="Filter by quarter">
+          <option value="">All Quarters</option>
+          <option value="Q1">Q1 Jul–Sep</option>
+          <option value="Q2">Q2 Oct–Dec</option>
+          <option value="Q3">Q3 Jan–Mar</option>
+          <option value="Q4">Q4 Apr–Jun</option>
+        </select>
+        <select class="fi" onchange="filterExp()" id="expModeF" title="Filter by mode">
+          <option value="">All Modes</option>
+          <option>Cash</option>
+          <option>Bank</option>
+        </select>
+        <select class="fi" onchange="filterExp()" id="expPaidF" title="Filter by status">
+          <option value="">All Status</option>
+          <option value="paid">Paid</option>
+          <option value="unpaid">Unpaid</option>
+        </select>
+        <!-- Sort -->
+        <select class="fi" onchange="setSortFromSelect(this.value)" id="expSortSel" title="Sort by">
+          <option value="date-desc">📅 Newest first</option>
+          <option value="date-asc">📅 Oldest first</option>
+          <option value="amount-desc">₹ Highest first</option>
+          <option value="amount-asc">₹ Lowest first</option>
+          <option value="category-asc">A–Z Category</option>
+          <option value="category-desc">Z–A Category</option>
+        </select>
       </div>
       <div class="table-wrap"><table><thead><tr><th onclick="srt('date')">Date ↕</th><th onclick="srt('category')">Category ↕</th><th class="hm">Remark</th><th class="hm" onclick="srt('name')">Paid By ↕</th><th class="hm">Mode</th><th class="hm">Qtr</th><th onclick="srt('amount')">Amount ↕</th><th class="ns">Status / Act</th></tr></thead><tbody id="expTbl"></tbody></table></div>
       <div class="pag" id="expPag"></div>
@@ -1665,6 +1710,8 @@ function doLogin() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').classList.remove('hidden');
   const lbl = { chairman:'👑 Chairman', secretary:'📋 Secretary', treasurer:'💼 Treasurer' };
+  const icons = { chairman:'👑', secretary:'📋', treasurer:'💼' };
+  document.getElementById('uPillIcon').textContent = icons[cRole] || '';
   document.getElementById('uPillText').textContent = lbl[cRole];
   if (cRole !== 'treasurer') document.getElementById('roBanner').classList.remove('hidden');
   applyPerms();
@@ -1972,7 +2019,28 @@ function filterExp() {
   expPage=1; renderExpTbl();
 }
 
-function srt(k) { expSrt.k===k?expSrt.d*=-1:(expSrt.k=k,expSrt.d=1); filterExp(); }
+function srt(k) {
+  expSrt.k===k ? expSrt.d*=-1 : (expSrt.k=k, expSrt.d=1);
+  syncSortSelect();
+  filterExp();
+}
+
+/* Maps dropdown value like "date-desc" → expSrt object */
+function setSortFromSelect(val) {
+  const [k, dir] = val.split('-');
+  expSrt.k = k;
+  expSrt.d = dir === 'desc' ? -1 : 1;
+  filterExp();
+}
+
+/* Keeps sort dropdown in sync when column headers clicked */
+function syncSortSelect() {
+  const sel = document.getElementById('expSortSel');
+  if (!sel) return;
+  const val = expSrt.k + '-' + (expSrt.d === -1 ? 'desc' : 'asc');
+  const opt = sel.querySelector('option[value="' + val + '"]');
+  if (opt) sel.value = val;
+}
 
 function renderExpTbl() {
   const sl   = expFil.slice((expPage-1)*PG, expPage*PG);
@@ -2588,7 +2656,41 @@ function handleImp(ev){const f=ev.target.files[0];if(!f)return;const r=new FileR
    ═══════════════════════════════════════════════════════════ */
 function oMo(id){document.getElementById(id).classList.add('open');}
 function cMo(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+/* ── Modal backdrop close — robust version ──────────────────────────────
+   Only close when BOTH mousedown AND mouseup occurred directly on the
+   backdrop (.mo element itself), not on the modal box or any child.
+   This prevents the modal from closing when the user clicks and drags
+   inside a form field (e.g. selecting text in an input or textarea).
+   ──────────────────────────────────────────────────────────────────── */
+document.querySelectorAll('.mo').forEach(function(m) {
+  var _mdOnBackdrop = false;
+
+  m.addEventListener('mousedown', function(e) {
+    /* Record whether mousedown landed directly on backdrop */
+    _mdOnBackdrop = (e.target === m);
+  });
+
+  m.addEventListener('mouseup', function(e) {
+    /* Only close if both mousedown AND mouseup were on the backdrop */
+    if (_mdOnBackdrop && e.target === m) {
+      m.classList.remove('open');
+    }
+    _mdOnBackdrop = false;
+  });
+
+  /* Touch support: touchstart → touchend both on backdrop */
+  var _touchOnBackdrop = false;
+  m.addEventListener('touchstart', function(e) {
+    _touchOnBackdrop = (e.target === m);
+  }, { passive: true });
+
+  m.addEventListener('touchend', function(e) {
+    if (_touchOnBackdrop && e.target === m) {
+      m.classList.remove('open');
+    }
+    _touchOnBackdrop = false;
+  });
+});
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -2917,7 +3019,8 @@ async function approveExp(id) {
   /* Add to main expense ledger */
   const exp = {
     id:       genId('exp'),
-    date:     p.date,
+    /* Normalize date — tabler submissions may arrive as full ISO string */
+    date:     (p.date || '').slice(0, 10),
     amount:   p.amount,
     category: p.category,
     name:     p.submittedBy,
@@ -3034,7 +3137,7 @@ function logoutTabler() {
 }
 
 async function submitTablerExp() {
-  const dt   = document.getElementById('tExpDt').value;
+  const dt   = (document.getElementById('tExpDt').value || '').slice(0, 10);
   const amt  = +document.getElementById('tExpAmt').value;
   const cat  = document.getElementById('tExpCat').value;
   const mode = document.getElementById('tExpMode').value;
