@@ -2787,7 +2787,7 @@ function openJrnlMo(id) {
     document.getElementById('jrnlDesc').value=j.desc;
   } else {
     document.getElementById('jrnlId').value=''; document.getElementById('jrnlDt').value=td();
-    ['jrnlAmt','jrnlParty','jrnlDesc'].forEach(i=>document.getElementById(i).value='');
+    ['jrnlAmt','jrnlDesc'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('jrnlType').value='contra';
   }
   updateJrnlFields();
