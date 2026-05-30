@@ -1442,7 +1442,7 @@ function saveChangePw() {
         <div class="pl-card"><div class="pl-head adj" style="background:var(--amber)">⏳ Unpaid Obligations — Cash</div><div id="plUnpaidCash"></div></div>
         <div class="pl-card"><div class="pl-head adj" style="background:var(--amber)">⏳ Unpaid Obligations — Bank</div><div id="plUnpaidBank"></div></div>
       </div>
-      <div class="card"><div class="card-title"><div class="card-title-icon">🏦</div> Bank &amp; Cash Position (Paid transactions only)</div><div id="plBC"></div></div>
+      <div class="card"><div class="card-title"><div class="card-title-icon">🏦</div> Bank &amp; Cash Position (All approved expenses including unpaid)</div><div id="plBC"></div></div>
       <div class="page-header" style="margin-top:16px"><div class="page-title" style="font-size:15px">Export &amp; Reports</div></div>
       <div class="ie-row">
         <button class="btn btn-ghost" onclick="expJSON()">⬇ Export JSON Backup</button>
@@ -2942,8 +2942,11 @@ function renderPL() {
   /* Bank & Cash position (paid transactions + journal) */
   const bPay=d.expenses.filter(e=>e.mode==='Bank'&&e.paid).reduce((a,e)=>a+e.amount,0);
   const cPay=d.expenses.filter(e=>e.mode==='Cash'&&e.paid).reduce((a,e)=>a+e.amount,0);
-  const bankClose=d.settings.bankOpen+subB+jrnlBankEffect-bPay;
-  const cashClose=d.settings.cashOpen+subC+sgt+misc+jrnlCashEffect-cPay;
+  /* Closing balance = opening + income - ALL approved expenses (paid + unpaid).
+     Unpaid expenses are obligations that have been committed — they reduce
+     the effective balance even though cash/bank hasn't moved yet. */
+  const bankClose=d.settings.bankOpen+subB+jrnlBankEffect-bPay-tUnpaidBank;
+  const cashClose=d.settings.cashOpen+subC+sgt+misc+jrnlCashEffect-cPay-tUnpaidCash;
 
   document.getElementById('plBC').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -2952,18 +2955,24 @@ function renderPL() {
         <div class="pl-row" style="padding:6px 0"><span>Opening</span><span class="amt">${INR(d.settings.bankOpen)}</span></div>
         <div class="pl-row" style="padding:6px 0"><span>Subscriptions (Bank)</span><span class="amt amt-green">+${INR(subB)}</span></div>
         ${jrnlBankEffect!==0?`<div class="pl-row" style="padding:6px 0"><span>Journal Entries (net)</span><span class="amt ${jrnlBankEffect>=0?'amt-green':'amt-red'}">${jrnlBankEffect>=0?'+':''}${INR(jrnlBankEffect)}</span></div>`:''}
-        <div class="pl-row" style="padding:6px 0"><span>Paid Payments</span><span class="amt amt-red">−${INR(bPay)}</span></div>
-        <div class="pl-row tot" style="padding:6px 0"><span>Closing</span><span class="amt">${INR(bankClose)}</span></div>
-        ${tUnpaidBank>0?`<div class="pl-row" style="padding:5px 0;font-size:11px;color:var(--amber)"><span>⏳ Unpaid Bank Obligations</span><span>${INR(tUnpaidBank)}</span></div>`:''}
+        <div class="pl-row" style="padding:6px 0"><span>Paid Expenses</span><span class="amt amt-red">−${INR(bPay)}</span></div>
+        ${tUnpaidBank>0?`<div class="pl-row" style="padding:6px 0;color:var(--amber)"><span>⏳ Unpaid Obligations (Bank)</span><span class="amt" style="color:var(--amber)">−${INR(tUnpaidBank)}</span></div>`:''}
+        <div class="pl-row tot" style="padding:6px 0">
+          <span>Net Closing Balance</span>
+          <span class="amt ${bankClose>=0?'amt-green':'amt-red'}">${INR(bankClose)}</span>
+        </div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">💵 Cash in Hand</div>
         <div class="pl-row" style="padding:6px 0"><span>Opening</span><span class="amt">${INR(d.settings.cashOpen)}</span></div>
         <div class="pl-row" style="padding:6px 0"><span>Sub (Cash) + Sgt + Misc</span><span class="amt amt-green">+${INR(subC+sgt+misc)}</span></div>
         ${jrnlCashEffect!==0?`<div class="pl-row" style="padding:6px 0"><span>Journal Entries (net)</span><span class="amt ${jrnlCashEffect>=0?'amt-green':'amt-red'}">${jrnlCashEffect>=0?'+':''}${INR(jrnlCashEffect)}</span></div>`:''}
-        <div class="pl-row" style="padding:6px 0"><span>Paid Payments</span><span class="amt amt-red">−${INR(cPay)}</span></div>
-        <div class="pl-row tot" style="padding:6px 0"><span>Closing</span><span class="amt">${INR(cashClose)}</span></div>
-        ${tUnpaidCash>0?`<div class="pl-row" style="padding:5px 0;font-size:11px;color:var(--amber)"><span>⏳ Unpaid Cash Obligations</span><span>${INR(tUnpaidCash)}</span></div>`:''}
+        <div class="pl-row" style="padding:6px 0"><span>Paid Expenses</span><span class="amt amt-red">−${INR(cPay)}</span></div>
+        ${tUnpaidCash>0?`<div class="pl-row" style="padding:6px 0;color:var(--amber)"><span>⏳ Unpaid Obligations (Cash)</span><span class="amt" style="color:var(--amber)">−${INR(tUnpaidCash)}</span></div>`:''}
+        <div class="pl-row tot" style="padding:6px 0">
+          <span>Net Closing Balance</span>
+          <span class="amt ${cashClose>=0?'amt-green':'amt-red'}">${INR(cashClose)}</span>
+        </div>
       </div>
     </div>`;
 }
