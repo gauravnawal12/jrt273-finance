@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, minimum-scale=1.0">
 <meta name="theme-color" content="#1a2844">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>JRT 273 · Finance Manager</title>
@@ -1100,21 +1101,7 @@ function closeMoreSheet() {
   document.getElementById('moreSheet').classList.add('hidden');
 }
 
-/* ── PATCH showTab to sync bottom nav ────────────────────── */
-/* Wrap the existing showTab to also update bottom nav */
-(function() {
-  const _orig = showTab;
-  showTab = function(name, btn) {
-    _orig(name, btn);
-    syncBottomNav(name);
-    /* Update desktop tab buttons too (for when called from more sheet) */
-    document.querySelectorAll('[data-tab]').forEach(b => {
-      if (b.classList.contains('tab-btn')) {
-        b.classList.toggle('active', b.dataset.tab === name);
-      }
-    });
-  };
-})();
+/* showTab sync — integrated directly into showTab() below */
 
 /* ── HIDE Settings from non-treasurers (bottom nav + more sheet) ── */
 function applyNavPerms() {
@@ -1767,14 +1754,14 @@ function saveChangePw() {
         </div>
       </div>
       <div class="fg r2" id="jrnlFromToRow">
-        <div class="fg"><div class="field-label">From (Debit) <span class="help-icon">?<span class="tip">The account that decreases. e.g. for Cash Withdrawal from Bank: From = Bank.</span></span></div>
-          <select id="jrnlFrom"><option value="Bank">Bank</option><option value="Cash">Cash</option></select></div>
-        <div class="fg"><div class="field-label">To (Credit) <span class="help-icon">?<span class="tip">The account that increases. e.g. for Cash Withdrawal from Bank: To = Cash.</span></span></div>
-          <select id="jrnlTo"><option value="Cash">Cash</option><option value="Bank">Bank</option></select></div>
+        <div class="fg"><div class="field-label">From (Debit) <span class="help-icon">?<span class="tip">The account/person that decreases — money leaves here. e.g. Cash Withdrawal: From = Bank.</span></span></div>
+          <select id="jrnlFrom"></select></div>
+        <div class="fg"><div class="field-label">To (Credit) <span class="help-icon">?<span class="tip">The account/person that increases — money arrives here. e.g. Cash Withdrawal: To = Cash.</span></span></div>
+          <select id="jrnlTo"></select></div>
       </div>
-      <div class="fg r2">
-        <div class="fg"><div class="field-label">Amount (₹) *</div><input type="number" id="jrnlAmt" placeholder="0" min="0"></div>
-        <div class="fg" id="jrnlPartyRow"><div class="field-label">Party Name <span class="help-icon">?<span class="tip">For loans: name of the person/entity the loan was given to or received from.</span></span></div><input type="text" id="jrnlParty" placeholder="Name (for loans)"></div>
+      <div class="fg">
+        <div class="field-label">Amount (₹) *</div>
+        <input type="number" id="jrnlAmt" placeholder="0" min="0">
       </div>
       <div class="fg"><div class="field-label">Description *</div><textarea id="jrnlDesc" placeholder="e.g. Cash withdrawal from Kotak bank — July 2025" style="min-height:60px"></textarea></div>
     </div>
@@ -1999,6 +1986,33 @@ function load() {
 /* Initialise — safe to call now that all constants are defined */
 S     = load();
 cYear = S.currentYear;
+/* ── Session restore — if role stored in sessionStorage, skip login ── */
+(function() {
+  const savedRole = sessionStorage.getItem('jrt273_role');
+  if (savedRole && ['chairman','secretary','treasurer'].includes(savedRole)) {
+    /* Restore without showing login screen */
+    cRole = savedRole;
+    selR  = savedRole;
+    /* Run after DOM is ready */
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').classList.remove('hidden');
+      const lbl   = { chairman:'👑 Chairman', secretary:'📋 Secretary', treasurer:'💼 Treasurer' };
+      const icons = { chairman:'👑', secretary:'📋', treasurer:'💼' };
+      const uIcon = document.getElementById('uPillIcon');
+      const uText = document.getElementById('uPillText');
+      if (uIcon) uIcon.textContent = icons[cRole] || '';
+      if (uText) uText.textContent = lbl[cRole] || '';
+      if (cRole !== 'treasurer') {
+        const rb = document.getElementById('roBanner');
+        if (rb) rb.classList.remove('hidden');
+      }
+      applyPerms();
+      initApp();
+    });
+  }
+})();
+
 /* Ensure all top-level fields exist (guards against old schema versions) */
 if (!S.pending)                  S.pending      = [];
 if (!S.tablerPins)               S.tablerPins   = {};
@@ -2074,10 +2088,14 @@ function getMemberPaid(memberName) {
 function getMemberDue(memberName, memberType) {
   const rate = getSubRate(memberType);
   const paid = getMemberPaid(memberName);
+  /* Allow negative values — negative means overpaid in that mode */
+  const cashDue = rate.cash - paid.cash;
+  const bankDue = rate.bank - paid.bank;
+  const total   = rate.annual - paid.total;
   return {
-    total: Math.max(0, rate.annual - paid.total),
-    cash:  Math.max(0, rate.cash   - paid.cash),
-    bank:  Math.max(0, rate.bank   - paid.bank)
+    total: total,
+    cash:  cashDue,   /* negative = overpaid in cash */
+    bank:  bankDue,   /* negative = overpaid in bank */
   };
 }
 
@@ -2106,6 +2124,8 @@ function doLogin() {
     return;
   }
   cRole = selR;
+  /* Persist session so page refresh doesn't log user out */
+  sessionStorage.setItem('jrt273_role', cRole);
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').classList.remove('hidden');
   const lbl = { chairman:'👑 Chairman', secretary:'📋 Secretary', treasurer:'💼 Treasurer' };
@@ -2135,6 +2155,7 @@ function resetPasswords() {
 
 function logout() {
   cRole = null; selR = null;
+  sessionStorage.removeItem('jrt273_role');
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('app').classList.add('hidden');
   document.getElementById('roBanner').classList.add('hidden');
@@ -2183,9 +2204,15 @@ function showTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   renderTab(name);
-  // Refresh pending approval badge whenever Expenses tab is opened
+  /* Sync bottom nav active state */
+  syncBottomNav(name);
+  /* Sync desktop tab buttons when called from more sheet */
+  document.querySelectorAll('[data-tab]').forEach(b => {
+    if (b.classList.contains('tab-btn')) b.classList.toggle('active', b.dataset.tab === name);
+  });
+  /* Refresh pending approval badge on expenses tab */
   if (name === 'expenses') updatePendingBadge();
 }
 
@@ -2720,16 +2747,33 @@ function renderJrnl() {
   ).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No journal entries yet. Use this tab for contra entries (cash ↔ bank) and loans.</td></tr>';
 }
 
+function buildJrnlAccountOptions(currentVal) {
+  /* Fixed accounts + all active members */
+  const fixed = ['Bank', 'Cash', 'JRT Trust'];
+  const members = (yd().members || []).filter(m => m.status === 'active').map(m => m.name);
+  const all = [...fixed, ...members];
+  return all.map(a => `<option value="${a}"${a === currentVal ? ' selected' : ''}>${a}</option>`).join('');
+}
+
 function updateJrnlFields() {
-  /* Show/hide party name field based on type */
-  const type=document.getElementById('jrnlType').value;
-  const isLoan=type!=='contra';
-  document.getElementById('jrnlPartyRow').style.opacity=isLoan?1:0.3;
-  document.getElementById('jrnlParty').disabled=!isLoan;
-  /* For loans, From/To labels change */
-  if (type==='loan_given')    { document.getElementById('jrnlFrom').value='Cash'; document.getElementById('jrnlTo').value='Bank'; }
-  if (type==='loan_received') { document.getElementById('jrnlFrom').value='Bank'; document.getElementById('jrnlTo').value='Cash'; }
-  if (type==='loan_repaid')   { document.getElementById('jrnlFrom').value='Cash'; document.getElementById('jrnlTo').value='Bank'; }
+  const type = document.getElementById('jrnlType').value;
+  /* Populate From/To with accounts + members */
+  const fromSel = document.getElementById('jrnlFrom');
+  const toSel   = document.getElementById('jrnlTo');
+  const curFrom = fromSel?.value;
+  const curTo   = toSel?.value;
+  if (fromSel) fromSel.innerHTML = buildJrnlAccountOptions(curFrom || 'Bank');
+  if (toSel)   toSel.innerHTML   = buildJrnlAccountOptions(curTo  || 'Cash');
+  /* Set sensible defaults per type */
+  const defaults = {
+    contra:        ['Bank', 'Cash'],
+    loan_given:    ['Cash', 'Bank'],
+    loan_received: ['Bank', 'Cash'],
+    loan_repaid:   ['Cash', 'Bank'],
+  };
+  const [defFrom, defTo] = defaults[type] || ['Bank', 'Cash'];
+  if (fromSel && !curFrom) fromSel.value = defFrom;
+  if (toSel   && !curTo)   toSel.value   = defTo;
 }
 
 function openJrnlMo(id) {
@@ -2740,7 +2784,7 @@ function openJrnlMo(id) {
     document.getElementById('jrnlId').value=j.id; document.getElementById('jrnlDt').value=j.date;
     document.getElementById('jrnlType').value=j.type; document.getElementById('jrnlFrom').value=j.from;
     document.getElementById('jrnlTo').value=j.to; document.getElementById('jrnlAmt').value=j.amount;
-    document.getElementById('jrnlParty').value=j.party||''; document.getElementById('jrnlDesc').value=j.desc;
+    document.getElementById('jrnlDesc').value=j.desc;
   } else {
     document.getElementById('jrnlId').value=''; document.getElementById('jrnlDt').value=td();
     ['jrnlAmt','jrnlParty','jrnlDesc'].forEach(i=>document.getElementById(i).value='');
@@ -2752,7 +2796,7 @@ function openJrnlMo(id) {
 
 function saveJrnl(){
   const id=document.getElementById('jrnlId').value;
-  const j={id:id||genId('jrn'),date:document.getElementById('jrnlDt').value,type:document.getElementById('jrnlType').value,from:document.getElementById('jrnlFrom').value,to:document.getElementById('jrnlTo').value,amount:+document.getElementById('jrnlAmt').value||0,party:document.getElementById('jrnlParty').value,desc:document.getElementById('jrnlDesc').value};
+  const j={id:id||genId('jrn'),date:document.getElementById('jrnlDt').value,type:document.getElementById('jrnlType').value,from:document.getElementById('jrnlFrom').value,to:document.getElementById('jrnlTo').value,amount:+document.getElementById('jrnlAmt').value||0,party:'',desc:document.getElementById('jrnlDesc').value};
   if(!j.date||!j.amount||!j.desc){toast('Fill Date, Amount and Description','err');return;}
   if(j.from===j.to){toast('From and To accounts cannot be the same','err');return;}
   const d=yd();if(id){const i=d.journal.findIndex(x=>x.id===id);if(i>=0)d.journal[i]=j;}else d.journal.push(j);
@@ -2829,7 +2873,8 @@ function renderPL() {
     return a;
   },0);
 
-  const surp=d.settings.bankOpen+d.settings.cashOpen+tI-tEpaid;
+  /* Surplus = total income - ALL expenses (paid + unpaid obligations) */
+  const surp=d.settings.bankOpen+d.settings.cashOpen+tI-tE;
   const se=document.getElementById('plSurp');
   se.textContent=INR(surp);
   se.style.color=surp>=0?'#4ade80':'#f87171';
@@ -2845,7 +2890,7 @@ function renderPL() {
     <div class="pl-row tot"><span>Total Income</span><span class="amt">${INR(tI)}</span></div>`;
 
   const ct={};
-  d.expenses.filter(e=>e.paid).forEach(e=>ct[e.category]=(ct[e.category]||0)+e.amount);
+  d.expenses.forEach(e=>ct[e.category]=(ct[e.category]||0)+e.amount);  /* ALL expenses — paid + unpaid */
   document.getElementById('plExp').innerHTML=Object.entries(ct).sort((a,b)=>b[1]-a[1]).map(([c,a])=>
     `<div class="pl-row"><span>${c}</span><span class="amt">${INR(a)}</span></div>`).join('')+
     `<div class="pl-row tot"><span>Total Paid Expenses</span><span class="amt">${INR(tEpaid)}</span></div>
