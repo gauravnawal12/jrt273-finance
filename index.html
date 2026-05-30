@@ -840,6 +840,175 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 4px; }
+
+/* ── FY DROPDOWN LINK ──────────────────────────────────────── */
+.fy-wrap { position: relative; }
+.fy-btn {
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,.85);
+  font-size: 12px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: center; gap: 2px;
+  padding: 5px 2px;
+  border-bottom: 1px dashed rgba(255,255,255,.35);
+  transition: color var(--t-fast), border-color var(--t-fast);
+  min-height: var(--touch); /* touch target */
+  /* extend touch area vertically */
+  position: relative;
+}
+.fy-btn:hover { color: var(--gold-mid); border-bottom-color: var(--gold-mid); }
+.fy-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--surface);
+  border-radius: var(--r);
+  box-shadow: var(--s3);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  z-index: 200;
+  min-width: 110px;
+  animation: dropIn .15s var(--ease) both;
+}
+.fy-menu select {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t1);
+  padding: 0 !important;
+  min-height: auto;
+}
+.fy-menu select option {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+@keyframes dropIn {
+  from { opacity:0; transform: translateY(-6px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* ── TAB NAV: desktop only ─────────────────────────────────── */
+.tab-nav-desktop { display: flex; }
+
+/* ── BOTTOM NAV ────────────────────────────────────────────── */
+.bottom-nav {
+  display: none; /* hidden on desktop */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 20px rgba(16,33,62,.08);
+}
+.bottom-nav { display: none; grid-template-columns: repeat(5, 1fr); align-items: center; }
+.bnav-btn {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border: none; background: none;
+  cursor: pointer;
+  color: var(--t3);
+  font-size: 10px; font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  transition: color var(--t-fast);
+  min-height: 52px;
+  -webkit-tap-highlight-color: transparent;
+}
+.bnav-btn.active { color: var(--navy); font-weight: 700; }
+.bnav-btn:active  { opacity: .7; }
+.bnav-icon {
+  width: 22px; height: 22px;
+  stroke: currentColor;
+  transition: transform var(--t-fast);
+}
+.bnav-btn.active .bnav-icon { transform: scale(1.1); }
+
+/* ── MORE SHEET ────────────────────────────────────────────── */
+.more-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(16,33,62,.4);
+  backdrop-filter: blur(4px);
+  animation: fadeIn .2s ease both;
+}
+.more-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 301;
+  background: var(--surface);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: 0 16px 24px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 30px rgba(16,33,62,.15);
+  animation: sheetUp .25s var(--ease) both;
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.more-sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--border-mid);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+.more-sheet-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--t1);
+  padding: 14px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.more-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.more-item {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 11px; font-weight: 600;
+  color: var(--t1);
+  font-family: 'DM Sans', sans-serif;
+  transition: all var(--t-fast);
+  min-height: 72px;
+  -webkit-tap-highlight-color: transparent;
+}
+.more-item:hover, .more-item:active { background: var(--navy-ghost); border-color: var(--navy-mid); color: var(--navy); }
+.more-item-icon { font-size: 24px; }
+
+/* ── MOBILE OVERRIDES ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Show bottom nav, hide desktop tabs */
+  .tab-nav-desktop { display: none !important; }
+  .bottom-nav { display: grid; }
+  /* Push content up so bottom nav doesn't cover it */
+  .app-main { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+  /* Tighter header on mobile */
+  .header-top { height: 48px; padding: 0 10px; }
+  .logo-mark  { width: 30px; height: 30px; font-size: 11px; }
+  .logo-text-main { font-size: 13px; }
+  .logo-text-sub  { display: none; }
+  .upill-text     { display: none; }
+  .user-btn { padding: 4px 8px; min-height: 32px; }
+  #syncStatus { display: none !important; }
+  /* Hide read-only banner text on very small */
+  .ro-banner { font-size: 10px; padding: 4px 10px; }
+}
+
 </style>
 <!-- Config loader: fetches config.json from same directory.
      config.json must contain: { "gasUrl": "https://..." }
@@ -867,6 +1036,83 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
       window.__cfgLoaded = false;
     });
 })();
+/* ── FY DROPDOWN ─────────────────────────────────────────── */
+function buildYrSel() {
+  if (!S.years || !S.years.length) S.years = [cYear];
+  if (!S.years.includes(cYear))    S.years.unshift(cYear);
+  /* Update the select in the dropdown */
+  const sel = document.getElementById('yrSel');
+  if (sel) {
+    sel.innerHTML = S.years
+      .map(y => `<option value="${y}"${y===cYear?' selected':''}>${y}</option>`)
+      .join('');
+  }
+  /* Update the label link */
+  const lbl = document.getElementById('fyLabel');
+  if (lbl) lbl.textContent = cYear;
+}
+function toggleFyMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('fyMenu');
+  if (menu) {
+    menu.classList.toggle('hidden');
+    if (!menu.classList.contains('hidden')) {
+      /* Close on outside click */
+      setTimeout(() => document.addEventListener('click', closeFyMenuOnOutside, { once: true }), 0);
+    }
+  }
+}
+function closeFyMenuOnOutside(e) {
+  const wrap = document.getElementById('fyWrap');
+  if (wrap && !wrap.contains(e.target)) closeFyMenu();
+}
+function closeFyMenu() {
+  const menu = document.getElementById('fyMenu');
+  if (menu) menu.classList.add('hidden');
+}
+
+/* ── BOTTOM NAV SYNC ─────────────────────────────────────── */
+function syncBottomNav(tabName) {
+  document.querySelectorAll('.bnav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabName);
+  });
+}
+
+/* ── MORE SHEET ──────────────────────────────────────────── */
+function openMoreSheet() {
+  document.getElementById('moreOverlay').classList.remove('hidden');
+  document.getElementById('moreSheet').classList.remove('hidden');
+}
+function closeMoreSheet() {
+  document.getElementById('moreOverlay').classList.add('hidden');
+  document.getElementById('moreSheet').classList.add('hidden');
+}
+
+/* ── PATCH showTab to sync bottom nav ────────────────────── */
+/* Wrap the existing showTab to also update bottom nav */
+(function() {
+  const _orig = showTab;
+  showTab = function(name, btn) {
+    _orig(name, btn);
+    syncBottomNav(name);
+    /* Update desktop tab buttons too (for when called from more sheet) */
+    document.querySelectorAll('[data-tab]').forEach(b => {
+      if (b.classList.contains('tab-btn')) {
+        b.classList.toggle('active', b.dataset.tab === name);
+      }
+    });
+  };
+})();
+
+/* ── HIDE Settings from non-treasurers (bottom nav + more sheet) ── */
+function applyNavPerms() {
+  const edit = canEd();
+  const moreSettings = document.getElementById('moreSettingsBtn');
+  if (moreSettings) moreSettings.style.display = edit ? '' : 'none';
+  const desktopSettings = document.getElementById('settingsTabBtn');
+  if (desktopSettings) desktopSettings.style.display = edit ? '' : 'none';
+}
+
 </script>
 </head>
 <body>
@@ -931,14 +1177,7 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
       </div>
     </button>
 
-    <!-- Emergency reset link -->
-    <div style="margin-top:16px;text-align:center">
-      <button onclick="resetPasswords()" style="background:none;border:none;cursor:pointer;
-        font-size:11px;color:var(--text-muted);text-decoration:underline;
-        font-family:'Inter',sans-serif;">
-        Reset all passwords to defaults
-      </button>
-    </div>
+    <!-- Reset link removed — password management is in Settings -->
   </div>
 </div>
 
@@ -957,9 +1196,17 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
       <!-- Controls — year + sync + user -->
       <div class="header-controls">
         <span id="syncStatus"></span>
-        <div class="yr-select-wrap" title="Switch financial year">
-          <span class="yr-label">FY</span>
-          <select id="yrSel" onchange="changeYear(this.value)"></select>
+        <!-- FY link: shows current year, click to open dropdown -->
+        <div class="fy-wrap" id="fyWrap">
+          <button class="fy-btn" onclick="toggleFyMenu(event)" id="fyBtn" title="Switch financial year">
+            <span id="fyLabel">2024-25</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="margin-left:3px;opacity:.6">
+              <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="fy-menu hidden" id="fyMenu">
+            <select id="yrSel" onchange="changeYear(this.value); closeFyMenu()" size="6" style="border:none;outline:none;font-size:13px;background:none;width:100%;padding:0;min-height:auto;box-shadow:none"></select>
+          </div>
         </div>
         <button class="user-btn" onclick="logout()" id="uPill" title="Tap to sign out">
           <span id="uPillIcon"></span>
@@ -969,15 +1216,16 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
       </div>
     </div>
     <div id="roBanner" class="ro-banner hidden">⚠️ View-only mode — sign in as Treasurer to add or edit records</div>
-    <nav class="tab-nav" role="tablist">
-      <button class="tab-btn active" onclick="showTab('dashboard',this)">📊 Dashboard</button>
-      <button class="tab-btn" onclick="showTab('budget',this)">📋 Budget Summary</button>
-      <button class="tab-btn" onclick="showTab('expenses',this)">💸 Expenses</button>
-      <button class="tab-btn" onclick="showTab('income',this)">💰 Income</button>
-      <button class="tab-btn" onclick="showTab('journal',this)">🔄 Journal</button>
-      <button class="tab-btn" onclick="showTab('members',this)">👥 Members</button>
-      <button class="tab-btn" onclick="showTab('pl',this)">📈 P&amp;L</button>
-      <button class="tab-btn" id="settingsTabBtn" onclick="showTab('settings',this)">⚙️ Settings</button>
+    <!-- Desktop tab nav (hidden on mobile) -->
+    <nav class="tab-nav tab-nav-desktop" role="tablist">
+      <button class="tab-btn active" onclick="showTab('dashboard',this)" data-tab="dashboard">📊 Dashboard</button>
+      <button class="tab-btn" onclick="showTab('budget',this)" data-tab="budget">📋 Budget</button>
+      <button class="tab-btn" onclick="showTab('expenses',this)" data-tab="expenses">💸 Expenses</button>
+      <button class="tab-btn" onclick="showTab('income',this)" data-tab="income">💰 Income</button>
+      <button class="tab-btn" onclick="showTab('journal',this)" data-tab="journal">🔄 Journal</button>
+      <button class="tab-btn" onclick="showTab('members',this)" data-tab="members">👥 Members</button>
+      <button class="tab-btn" onclick="showTab('pl',this)" data-tab="pl">📈 P&amp;L</button>
+      <button class="tab-btn" id="settingsTabBtn" onclick="showTab('settings',this)" data-tab="settings">⚙️ Settings</button>
     </nav>
   </header>
 
@@ -1161,16 +1409,26 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
         <button class="btn btn-primary btn-sm" onclick="saveSubRates()">💾 Save Rates</button>
       </div>
 
-      <!-- Passwords -->
+      <!-- Password: each role can only change their own -->
       <div class="card">
-        <div class="card-title"><div class="card-title-icon">🔐</div> Role Passwords</div>
-        <p class="text-muted" style="margin-bottom:14px">Leave a field blank to keep the existing password. Defaults: <strong>chairman123</strong> / <strong>secretary123</strong> / <strong>treasurer123</strong></p>
-        <div class="fg r2">
-          <div class="fg"><div class="field-label">Chairman Password</div><input type="password" id="pwC" placeholder="New password (blank = keep)"></div>
-          <div class="fg"><div class="field-label">Secretary Password</div><input type="password" id="pwS" placeholder="New password (blank = keep)"></div>
+        <div class="card-title"><div class="card-title-icon">🔐</div> Change My Password</div>
+        <p class="text-muted" style="margin-bottom:14px">You can only change your own password. Enter your current password to confirm, then set a new one.</p>
+        <div class="fg">
+          <div class="field-label">Current Password</div>
+          <input type="password" id="pwCurrent" placeholder="Enter your current password" autocomplete="current-password">
         </div>
-        <div class="fg" style="max-width:280px"><div class="field-label">Treasurer Password</div><input type="password" id="pwT" placeholder="New password (blank = keep)"></div>
-        <button class="btn btn-primary" onclick="savePW()">💾 Update Passwords</button>
+        <div class="fg r2">
+          <div class="fg">
+            <div class="field-label">New Password</div>
+            <input type="password" id="pwNew" placeholder="New password" autocomplete="new-password">
+          </div>
+          <div class="fg">
+            <div class="field-label">Confirm New Password</div>
+            <input type="password" id="pwConfirm" placeholder="Repeat new password" autocomplete="new-password">
+          </div>
+        </div>
+        <div id="pwMsg" style="font-size:12px;margin-bottom:10px;min-height:16px"></div>
+        <button class="btn btn-primary" onclick="savePW()">🔐 Update My Password</button>
       </div>
 
       <!-- Financial Years -->
@@ -1244,6 +1502,50 @@ tr.unpaid-row:hover td { background: #fef3c7 !important; }
 
   </main>
 
+  <!-- ── MOBILE BOTTOM NAV ── -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bnav-btn active" onclick="showTab('dashboard',this);syncBottomNav('dashboard')" data-tab="dashboard">
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="bnav-btn" onclick="showTab('expenses',this);syncBottomNav('expenses')" data-tab="expenses">
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span>Expenses</span>
+    </button>
+    <button class="bnav-btn" onclick="showTab('income',this);syncBottomNav('income')" data-tab="income">
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span>Income</span>
+    </button>
+    <button class="bnav-btn" onclick="showTab('pl',this);syncBottomNav('pl')" data-tab="pl">
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>P&amp;L</span>
+    </button>
+    <button class="bnav-btn" onclick="openMoreSheet()" id="moreNavBtn">
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- More sheet overlay -->
+  <div class="more-overlay hidden" id="moreOverlay" onclick="closeMoreSheet()"></div>
+  <div class="more-sheet hidden" id="moreSheet">
+    <div class="more-sheet-handle"></div>
+    <div class="more-sheet-title">More</div>
+    <div class="more-sheet-grid">
+      <button class="more-item" onclick="showTab('budget',document.querySelector('[data-tab=budget]'));closeMoreSheet();syncBottomNav('budget')">
+        <span class="more-item-icon">📋</span><span>Budget</span>
+      </button>
+      <button class="more-item" onclick="showTab('journal',document.querySelector('[data-tab=journal]'));closeMoreSheet();syncBottomNav('journal')">
+        <span class="more-item-icon">🔄</span><span>Journal</span>
+      </button>
+      <button class="more-item" onclick="showTab('members',document.querySelector('[data-tab=members]'));closeMoreSheet();syncBottomNav('members')">
+        <span class="more-item-icon">👥</span><span>Members</span>
+      </button>
+      <button class="more-item" id="moreSettingsBtn" onclick="showTab('settings',document.querySelector('[data-tab=settings]'));closeMoreSheet();syncBottomNav('settings')">
+        <span class="more-item-icon">⚙️</span><span>Settings</span>
+      </button>
+    </div>
+  </div>
 
 </div><!-- /app -->
 
@@ -1750,6 +2052,7 @@ function applyPerms() {
   ['btnAddExp','btnAddSub','btnAddSgt','btnAddMisc','btnAddMem','btnBudMgr','btnAddJrnl'].forEach(id => {
     const el = document.getElementById(id); if (el) el.disabled = !edit;
   });
+  applyNavPerms();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2498,7 +2801,9 @@ function renderPL() {
    SETTINGS
    ═══════════════════════════════════════════════════════════ */
 function renderSet() {
-  ['pwC','pwS','pwT'].forEach(id=>document.getElementById(id).value='');
+  /* Clear password change fields */
+  ['pwCurrent','pwNew','pwConfirm'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const pwMsgEl=document.getElementById('pwMsg'); if(pwMsgEl) pwMsgEl.textContent='';
   document.getElementById('yrTags').innerHTML=S.years.map(y=>
     `<div class="tag">${y} <button class="tag-x" onclick="rmYear('${y}')">×</button></div>`).join('');
   document.getElementById('catTags').innerHTML=S.categories.map((c,i)=>
@@ -2595,9 +2900,29 @@ function saveSubRates() {
 }
 
 function savePW() {
-  const c=document.getElementById('pwC').value; const s=document.getElementById('pwS').value; const t=document.getElementById('pwT').value;
-  if(c)S.passwords.chairman=c; if(s)S.passwords.secretary=s; if(t)S.passwords.treasurer=t;
-  svSync();toast('✅ Passwords updated');
+  const current = document.getElementById('pwCurrent').value;
+  const newPw   = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  const msgEl   = document.getElementById('pwMsg');
+  msgEl.style.color = 'var(--red)';
+
+  /* Verify current password */
+  if (!current) { msgEl.textContent = 'Please enter your current password.'; return; }
+  if (current !== S.passwords[cRole]) { msgEl.textContent = 'Current password is incorrect.'; return; }
+
+  /* Validate new password */
+  if (!newPw || newPw.length < 6) { msgEl.textContent = 'New password must be at least 6 characters.'; return; }
+  if (newPw !== confirm) { msgEl.textContent = 'Passwords do not match.'; return; }
+
+  /* Only update own role's password */
+  S.passwords[cRole] = newPw;
+  svSync();
+
+  /* Clear fields */
+  ['pwCurrent','pwNew','pwConfirm'].forEach(id => document.getElementById(id).value = '');
+  msgEl.style.color = 'var(--green)';
+  msgEl.textContent = '✅ Password updated successfully.';
+  toast('✅ Password updated');
 }
 
 /**
