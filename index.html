@@ -1418,6 +1418,12 @@ function showLoadingOverlay(show) {
         <div><div class="page-title">Journal Entries</div><div class="page-subtitle">Contra entries (Cash ↔ Bank transfers), hand loans given/received, and adjustments</div></div>
         <button class="btn btn-primary" id="btnAddJrnl" onclick="openJrnlMo()">+ Add Entry</button>
       </div>
+      <!-- Loan Obligations Summary -->
+      <div class="card">
+        <div class="card-title"><div class="card-title-icon">📊</div> Loan Obligations Summary</div>
+        <div id="jrnlSummary"><p class="text-muted">No journal entries yet.</p></div>
+      </div>
+
       <div class="card" style="background:var(--blue-bg);border-color:var(--blue-bd)">
         <div style="font-size:12px;color:var(--blue);line-height:1.6">
           <strong>When to use Journal Entries:</strong><br>
@@ -1646,6 +1652,17 @@ function showLoadingOverlay(show) {
         <button class="btn btn-primary" onclick="submitTablerExp()" style="width:100%;justify-content:center;min-height:48px;font-size:14px">📤 Submit for Treasurer Approval</button>
         <div id="tExpMsg" style="margin-top:10px;font-size:12px;display:none"></div>
       </div>
+      <!-- Unpaid balance banner -->
+      <div id="tablerUnpaidBanner" style="display:none;background:var(--red-bg);border:1.5px solid var(--red-bd);border-left:4px solid var(--red);border-radius:var(--r);padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--red)">⚠️ Unpaid Balances</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px" id="tablerUnpaidDetail"></div>
+          </div>
+          <div style="font-family:'Sora',sans-serif;font-size:22px;font-weight:800;color:var(--red)" id="tablerUnpaidTotal"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;border-bottom:none;padding-bottom:0">
           <div style="display:flex;align-items:center;gap:8px"><div class="card-title-icon">📋</div> My Expense History</div>
@@ -2337,7 +2354,9 @@ function renderBudget() {
     const b   = getBud(cat);
     const sp  = getSpent(cat);
     const unp = getUnpaid(cat);
-    if (b.annual===0 && sp===0 && unp===0) return;
+    /* Only skip if truly empty — no annual, no quarters, no actual spend */
+    const qTotal = [b.q1,b.q2,b.q3,b.q4].reduce((s,v)=>s+(v||0),0);
+    if (b.annual===0 && qTotal===0 && sp===0 && unp===0) return;
     tA+=b.annual; tS+=sp; tU+=unp;
     const bal = b.annual - sp - unp;
     const bc  = (sp+unp)>b.annual?'over':(sp+unp)>b.annual*.85&&b.annual>0?'warn':'safe';
@@ -2414,8 +2433,11 @@ function validateQBudget(el) {
     return s + (+inp?.value || 0);
   }, 0);
   const errEl = document.getElementById('budMgrErr');
-  if (qSum > annual && annual > 0) {
+  if (annual > 0 && qSum > annual) {
     errEl.textContent = `"${cat}": Quarterly total (${INR(qSum)}) exceeds Annual budget (${INR(annual)}). Please reduce.`;
+    errEl.style.display = 'block';
+  } else if (annual === 0 && qSum > 0) {
+    errEl.textContent = `"${cat}": Annual Budget is ₹0 but quarterly values total ${INR(qSum)}. Please set an Annual Budget first.`;
     errEl.style.display = 'block';
   } else {
     errEl.style.display = 'none';
@@ -2425,6 +2447,7 @@ function validateQBudget(el) {
 function saveBuds() {
   /* Final validation before saving */
   let hasErr = false;
+  let errMsg = '';
   document.querySelectorAll('#budMgrRows [data-q="annual"]').forEach(annualEl => {
     const cat    = annualEl.dataset.cat;
     const annual = +annualEl.value || 0;
@@ -2432,9 +2455,23 @@ function saveBuds() {
       const inp = document.querySelector(`#budMgrRows input[data-cat="${cat}"][data-q="${q}"]`);
       return s + (+inp?.value || 0);
     }, 0);
-    if (qSum > annual && annual > 0) hasErr = true;
+    /* Quarters exceed annual */
+    if (annual > 0 && qSum > annual) {
+      hasErr = true;
+      errMsg = `"${cat}": Quarterly total (${INR(qSum)}) exceeds Annual (${INR(annual)}).`;
+    }
+    /* Annual is 0 but quarters have values — this is invalid */
+    if (annual === 0 && qSum > 0) {
+      hasErr = true;
+      errMsg = `"${cat}": Annual Budget cannot be zero when quarterly budgets are set (quarterly total: ${INR(qSum)}). Either set an Annual Budget or clear all quarterly values.`;
+    }
   });
-  if (hasErr) { toast('Fix quarterly budget errors before saving','err'); return; }
+  if (hasErr) {
+    const errEl = document.getElementById('budMgrErr');
+    if (errEl) { errEl.textContent = errMsg; errEl.style.display = 'block'; }
+    toast('Fix budget errors before saving','err');
+    return;
+  }
 
   document.querySelectorAll('#budMgrRows input[data-cat]').forEach(inp => {
     const cat = inp.dataset.cat, q = inp.dataset.q;
@@ -2794,15 +2831,94 @@ function delMisc(id){if(!confirm('Delete?'))return;yd().miscIncome=yd().miscInco
    ═══════════════════════════════════════════════════════════ */
 function renderJrnl() {
   const d=yd(); const edit=canEd();
+
+  /* ── Journal Summary ────────────────────────────────────────
+     Aggregate net positions per entity from all loan entries.
+     Contra entries (cash↔bank) don't create obligations.
+     loan_given:    Table gave money → party OWES table
+     loan_received: Table took money → table OWES party
+     loan_repaid:   Loan returned → reduces outstanding
+     ─────────────────────────────────────────────────────────── */
+  const netOwed = {}; /* key = party name, value = positive means they owe us */
+
+  d.journal.forEach(j => {
+    const party = j.from === 'Bank' || j.from === 'Cash' || j.from === 'JRT Trust'
+      ? j.to   /* money went TO this person */
+      : j.from; /* money came FROM this person */
+
+    if (!netOwed[party]) netOwed[party] = 0;
+
+    if (j.type === 'loan_given') {
+      /* We gave money to 'party' — they owe us */
+      const p = (j.to !== 'Bank' && j.to !== 'Cash' && j.to !== 'JRT Trust') ? j.to : j.from;
+      if (!netOwed[p]) netOwed[p] = 0;
+      netOwed[p] += j.amount;
+    } else if (j.type === 'loan_received') {
+      /* We received money from 'party' — we owe them */
+      const p = (j.from !== 'Bank' && j.from !== 'Cash' && j.from !== 'JRT Trust') ? j.from : j.to;
+      if (!netOwed[p]) netOwed[p] = 0;
+      netOwed[p] -= j.amount;
+    } else if (j.type === 'loan_repaid') {
+      /* Loan repaid — determine direction from From/To */
+      const isMemberFrom = (j.from !== 'Bank' && j.from !== 'Cash' && j.from !== 'JRT Trust');
+      if (isMemberFrom) {
+        /* Member repaid us — reduces what they owe */
+        if (!netOwed[j.from]) netOwed[j.from] = 0;
+        netOwed[j.from] -= j.amount;
+      } else {
+        /* We repaid someone — reduces what we owe */
+        if (!netOwed[j.to]) netOwed[j.to] = 0;
+        netOwed[j.to] += j.amount;
+      }
+    }
+    /* contra entries: no net obligation, just cash↔bank movement */
+  });
+
+  /* Remove entries with zero net (fully settled) */
+  const activeObligations = Object.entries(netOwed).filter(([k,v]) => Math.round(v) !== 0);
+
+  /* Render summary card */
+  const summaryEl = document.getElementById('jrnlSummary');
+  if (summaryEl) {
+    if (!activeObligations.length && d.journal.length === 0) {
+      summaryEl.innerHTML = '<p class="text-muted" style="margin:0">No journal entries yet.</p>';
+    } else if (!activeObligations.length) {
+      summaryEl.innerHTML = '<div style="color:var(--green);font-weight:600">✅ All loans are settled — no outstanding obligations.</div>';
+    } else {
+      summaryEl.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr>
+            <th style="padding:8px 12px;text-align:left;background:var(--navy);color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Party</th>
+            <th style="padding:8px 12px;background:var(--navy);color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Net Position</th>
+            <th style="padding:8px 12px;background:var(--navy);color:rgba(255,255,255,.7);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Status</th>
+          </tr></thead>
+          <tbody>
+            ${activeObligations.map(([party, net]) => {
+              const abs = Math.abs(net);
+              const owesUs = net > 0;
+              return `<tr>
+                <td style="padding:9px 12px;font-weight:600;border-bottom:1px solid var(--border)">${party}</td>
+                <td style="padding:9px 12px;font-family:'Sora',sans-serif;font-weight:700;border-bottom:1px solid var(--border);color:${owesUs?'var(--red)':'var(--amber)'}">${INR(abs)}</td>
+                <td style="padding:9px 12px;border-bottom:1px solid var(--border)">
+                  <span class="badge ${owesUs?'b-due':'b-loan'}">${owesUs?'Owes Table':'Table Owes'}</span>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+  }
+
+  /* Render journal table */
   document.getElementById('jrnlTbl').innerHTML = d.journal.map((j,i) =>
     `<tr><td>${i+1}</td><td>${j.date}</td>
-     <td><span class="badge ${j.type.startsWith('loan')?'b-loan':'b-contra'}">${j.type.replace('_',' ')}</span></td>
-     <td>${j.desc}${j.party?` — <em>${j.party}</em>`:''}</td>
-     <td><span class="badge b-${j.from.toLowerCase()}">${j.from}</span></td>
-     <td><span class="badge b-${j.to.toLowerCase()}">${j.to}</span></td>
+     <td><span class="badge ${j.type.startsWith('loan')?'b-loan':'b-contra'}">${j.type.replace(/_/g,' ')}</span></td>
+     <td>${j.desc}</td>
+     <td><span class="badge b-${(j.from||'').toLowerCase().replace(/\s+/g,'-')}">${j.from}</span></td>
+     <td><span class="badge b-${(j.to||'').toLowerCase().replace(/\s+/g,'-')}">${j.to}</span></td>
      <td class="amt">${INR(j.amount)}</td>
      ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openJrnlMo(this.dataset.id)" data-id="${j.id}">✏️</button><button class="btn btn-danger btn-sm" onclick="delJrnl(this.dataset.id)" data-id="${j.id}">🗑</button></div></td>`:''}</tr>`
-  ).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No journal entries yet. Use this tab for contra entries (cash ↔ bank) and loans.</td></tr>';
+  ).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No journal entries yet.</td></tr>';
 }
 
 function buildJrnlAccountOptions(currentVal) {
@@ -3792,6 +3908,28 @@ async function loadTablerHistory() {
   }
 
   const myExp = (S.pending || []).filter(p => p.year === cYear && p.submittedBy === tablerUser.name);
+
+  /* Compute unpaid totals */
+  const unpaid = myExp.filter(p => p.status === 'approved' || p.status === 'Approved');
+  /* Also include pending (not yet rejected) as "to be confirmed" */
+  const pending = myExp.filter(p => p.status === 'pending' || p.status === 'Pending');
+  const unpaidTotal = unpaid.reduce((s, p) => s + (+p.amount || 0), 0);
+  const pendingTotal = pending.reduce((s, p) => s + (+p.amount || 0), 0);
+  const banner = document.getElementById('tablerUnpaidBanner');
+  const detailEl = document.getElementById('tablerUnpaidDetail');
+  const totalEl  = document.getElementById('tablerUnpaidTotal');
+  if (banner) {
+    if (unpaidTotal > 0 || pendingTotal > 0) {
+      banner.style.display = 'block';
+      const parts = [];
+      if (unpaidTotal > 0) parts.push(`${INR(unpaidTotal)} approved, awaiting payment`);
+      if (pendingTotal > 0) parts.push(`${INR(pendingTotal)} pending review`);
+      if (detailEl) detailEl.textContent = parts.join(' · ');
+      if (totalEl)  totalEl.textContent  = INR(unpaidTotal + pendingTotal);
+    } else {
+      banner.style.display = 'none';
+    }
+  }
 
   if (!myExp.length) {
     el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">You have not submitted any expenses this year yet.</div>';
