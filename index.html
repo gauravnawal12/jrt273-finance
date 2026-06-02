@@ -2839,15 +2839,14 @@ function renderJrnl() {
      loan_received: Table took money → table OWES party
      loan_repaid:   Loan returned → reduces outstanding
      ─────────────────────────────────────────────────────────── */
-  const netOwed = {}; /* key = party name, value = positive means they owe us */
+  /* netOwed removed — now using pairLedger bilateral tracking */
 
   /* ── SIMPLE BILATERAL TRACKING ──────────────────────────────────
      Every journal entry (except Contra) moves money FROM one party
      TO another. The receiver owes the sender that amount.
      We track net positions between every pair of parties.
 
-     netOwed[A][B] = positive means B owes A
-                   = negative means A owes B
+     pairLedger tracks bilateral: who sent money to whom
 
      Contra entries (Bank↔Cash) are skipped — purely internal.
      ─────────────────────────────────────────────────────────── */
@@ -2888,8 +2887,7 @@ function renderJrnl() {
     }
   });
 
-  /* Remove entries with zero net (fully settled) */
-  const activeObligations = Object.entries(netOwed).filter(([k,v]) => Math.round(v) !== 0);
+  /* activeObligations built above via pairLedger */
 
   /* Render summary card */
   const summaryEl = document.getElementById('jrnlSummary');
