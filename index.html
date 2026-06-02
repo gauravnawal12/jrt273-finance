@@ -1162,6 +1162,22 @@ function saveChangePw() {
   setTimeout(() => cMo('moChangePw'), 1500);
 }
 
+/* ── LOADING OVERLAY ─────────────────────────────────────────
+   Shown on first sync so the app doesn't flash stale data.
+   ─────────────────────────────────────────────────────────── */
+function showLoadingOverlay(show) {
+  const el = document.getElementById('syncOverlay');
+  if (!el) return;
+  if (show) {
+    el.style.display = 'flex';
+    el.style.opacity = '1';
+  } else {
+    el.style.transition = 'opacity .3s ease';
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; }, 350);
+  }
+}
+
 </script>
 </head>
 <body>
@@ -1873,6 +1889,18 @@ function saveChangePw() {
   </div>
 </div>
 
+<!-- Sync loading overlay (shown on first device sync) -->
+<div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:999;
+  background:var(--navy);flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;">
+  <div style="width:44px;height:44px;border:3px solid rgba(255,255,255,.2);
+    border-top-color:var(--gold-mid);border-radius:50%;
+    animation:spin .8s linear infinite"></div>
+  <div style="font-family:'Sora',sans-serif;font-size:15px;font-weight:600;
+    color:rgba(255,255,255,.85)">Syncing your data…</div>
+  <div style="font-size:12px;color:rgba(255,255,255,.4)">Connecting to Google Sheets</div>
+</div>
+
 <div class="toast" id="tst" role="alert"></div>
 
 <!-- ═══ JAVASCRIPT ════════════════════════════════════════════ -->
@@ -1971,8 +1999,8 @@ function load() {
     }
   } catch(e) { console.warn('Load failed:', e); }
   return {
-    years:           ['2024-25'],
-    currentYear:     '2024-25',
+    years:           ['2025-26'],   /* default — overridden by backend on first sync */
+    currentYear:     '2025-26',
     categories:      [...DEF_CATS],
     subRates:        defSubRates(),
     passwords:       { chairman:'chairman123', secretary:'secretary123', treasurer:'treasurer123' },
@@ -3225,7 +3253,11 @@ const API = {
     } catch(e) { throw e; }
   },
 
-  async getData(year)              { return this.call('getData', { year }); },
+  async getData(year) {
+    const result = await this.call('getData', { year });
+    if (result) result._fetchedFor = year; // track which year this was fetched for
+    return result;
+  },
   async saveData(year, data, token) { return this.call('saveData', { year, data: JSON.stringify(data), syncToken: token||'' }); },
   async getConfig()                { return this.call('getConfig'); },
   async saveConfig(cfg)            { return this.call('saveConfig', { config: JSON.stringify(cfg) }); },
@@ -3260,16 +3292,37 @@ function showSyncStatus(status) {
 async function syncLoad() {
   if (!API.url) { isOnline = false; showSyncStatus('offline'); return; }
   setSyncing(true);
+  /* Show loading overlay on first sync so stale data isn't shown */
+  const isFirstSync = !S._everSynced;
+  if (isFirstSync) showLoadingOverlay(true);
   try {
-    const [cfg, ydData, pend] = await Promise.all([
-      API.getConfig(),
+    /* First fetch config to get the correct years list and cYear */
+    const cfg = await API.getConfig();
+    /* Apply years + cYear BEFORE fetching year data */
+    if (cfg.years && cfg.years.length) {
+      S.years = cfg.years;
+      if (!S.years.includes(cYear)) {
+        cYear = S.years[S.years.length - 1];
+        S.currentYear = cYear;
+      }
+    }
+    /* Now fetch the correct year's data + pending */
+    const [ydData, pend] = await Promise.all([
       API.getData(cYear),
       API.getPending(cYear)
     ]);
     /* Only merge backend values if they are non-empty.
        An unconfigured backend returns empty arrays/objects — we must
        not let those overwrite good local defaults. */
-    if (cfg.years      && cfg.years.length)      S.years      = cfg.years;
+    if (cfg.years && cfg.years.length) {
+      S.years = cfg.years;
+      /* Switch to the LATEST year from the backend if current year
+         isn't in the backend's list — this fixes mobile first-load */
+      if (!S.years.includes(cYear)) {
+        cYear = S.years[S.years.length - 1];
+        S.currentYear = cYear;
+      }
+    }
     if (cfg.categories && cfg.categories.length) S.categories = cfg.categories;
     if (cfg.subRates   && cfg.subRates.length)   S.subRates   = cfg.subRates;
     if (cfg.tablerPins && Object.keys(cfg.tablerPins).length) S.tablerPins = cfg.tablerPins;
@@ -3277,9 +3330,14 @@ async function syncLoad() {
     if (cfg.passwords && cfg.passwords.treasurer && cfg.passwords.chairman) {
       S.passwords = cfg.passwords;
     }
-    if (ydData && ydData.data) {
+    /* Re-fetch year data if cYear changed after syncing the years list */
+    let finalYdData = ydData;
+    if (finalYdData && finalYdData._fetchedFor && finalYdData._fetchedFor !== cYear) {
+      finalYdData = await API.getData(cYear);
+    }
+    if (finalYdData && finalYdData.data) {
       /* Merge: ensure all arrays exist */
-      const d = ydData.data;
+      const d = finalYdData.data;
       if (!d.members)       d.members = [];
       if (!d.journal)       d.journal = [];
       if (!d.subscriptions) d.subscriptions = [];
@@ -3311,8 +3369,10 @@ async function syncLoad() {
       syncSave();
     }
 
+    S._everSynced = true;
     isOnline = true;
     showSyncStatus('saved');
+    sv(); // persist the everSynced flag
     buildYrSel();
     renderTab(document.querySelector('.tab-panel.active')?.id?.replace('tab-','') || 'dashboard');
     updatePendingBadge();
@@ -3322,6 +3382,7 @@ async function syncLoad() {
     showSyncStatus('offline');
   } finally {
     setSyncing(false);
+    showLoadingOverlay(false);
   }
 }
 
