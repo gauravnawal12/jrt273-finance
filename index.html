@@ -2201,6 +2201,8 @@ function resetPasswords() {
 function logout() {
   cRole = null; selR = null;
   sessionStorage.removeItem('jrt273_role');
+  stopPolling();
+  if (_keepaliveTimer) { clearInterval(_keepaliveTimer); _keepaliveTimer = null; }
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('app').classList.add('hidden');
   document.getElementById('roBanner').classList.add('hidden');
@@ -3391,205 +3393,213 @@ const API = {
 };
 
 /* ── Sync state ── */
-let isOnline = false;
-let isSyncing = false;
+let isOnline       = false;
+let isSyncing      = false;
+let _syncTimer     = null;
+let _pollTimer     = null;
+let _lastServerTs  = null;
+let _keepaliveTimer = null;
 
+/* ── Spinner ── */
 function setSyncing(v) {
   isSyncing = v;
   const el = document.getElementById('syncSpinner');
   if (el) el.style.display = v ? 'flex' : 'none';
 }
 
+/* ── Status badge ── */
 function showSyncStatus(status) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
-  const map = { saved:['✓ Saved','#4ade80'], err:['⚠ Sync Error','#f87171'], offline:['● Offline','#fbbf24'] };
+  const map = {
+    saved:   ['✓', '#4ade80'],
+    err:     ['⚠', '#f87171'],
+    offline: ['○', '#fbbf24'],
+    syncing: ['↻', '#93c5fd'],
+  };
   const [txt, col] = map[status] || ['',''];
-  el.textContent = txt; el.style.color = col; el.style.display = txt ? 'inline' : 'none';
-  if (status === 'saved') setTimeout(() => { if (el.textContent === '✓ Saved') el.style.display = 'none'; }, 3000);
+  el.textContent = txt; el.style.color = col;
+  el.style.display = txt ? 'inline' : 'none';
+  if (status === 'saved') {
+    setTimeout(() => { if (el.textContent === '✓') el.style.display = 'none'; }, 2000);
+  }
 }
 
-/**
- * Load from backend into S — then re-render active tab.
- * Called on login and year switch.
- */
+/* ── Sync ID tracking (deduplication) ── */
+function getSyncedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(SYNC_KEY) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function markSynced(id) {
+  const ids = getSyncedIds(); ids.add(String(id));
+  const arr = [...ids]; if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  localStorage.setItem(SYNC_KEY, JSON.stringify(arr));
+}
+function isSynced(id) { return getSyncedIds().has(String(id)); }
+
+/* ══ LOCAL WRITE — instant, never fails ═══════════════════ */
+function sv() { localStorage.setItem(SK, JSON.stringify(S)); }
+
+/* ══ SAVE PATH ═════════════════════════════════════════════
+   svSync() → called after every data change
+   syncSave() → debounce 600ms → _doSync() → POST to GAS
+   ═════════════════════════════════════════════════════════ */
+function svSync() {
+  sv();
+  syncSave();
+}
+
+function syncSave() {
+  if (!API.url) return;
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(_doSync, 600);
+}
+
+async function _doSync() {
+  _syncTimer = null;
+  if (!API.url) return;
+  if (isSyncing) { setTimeout(_doSync, 800); return; }
+  setSyncing(true);
+  showSyncStatus('syncing');
+  try {
+    const token = genId('tok');
+    await Promise.all([
+      API.saveData(cYear, yd(), token),
+      API.saveConfig({
+        years: S.years, categories: S.categories,
+        subRates: S.subRates, passwords: S.passwords,
+        tablerPins: S.tablerPins || {},
+        defaultTablerPin: S.defaultTablerPin || '0273'
+      })
+    ]);
+    /* Record server timestamp so poller knows what "current" is */
+    try {
+      const ts = await API.call('getUpdatedAt', { year: cYear });
+      if (ts && ts.updatedAt) _lastServerTs = ts.updatedAt;
+    } catch(e) {}
+    isOnline = true;
+    S._everSynced = true;
+    sv();
+    showSyncStatus('saved');
+  } catch(e) {
+    console.warn('Sync save failed:', e.message);
+    isOnline = false; showSyncStatus('err');
+    S._pendingSync = true; sv();
+  } finally {
+    setSyncing(false);
+  }
+}
+
+/* ══ LOAD PATH — full fetch from backend ══════════════════ */
 async function syncLoad() {
   if (!API.url) { isOnline = false; showSyncStatus('offline'); return; }
+  const isFirst = !S._everSynced;
+  if (isFirst) showLoadingOverlay(true);
   setSyncing(true);
-  /* Show loading overlay on first sync so stale data isn't shown */
-  const isFirstSync = !S._everSynced;
-  if (isFirstSync) showLoadingOverlay(true);
+  showSyncStatus('syncing');
   try {
-    /* First fetch config to get the correct years list and cYear */
+    /* Config first — determines correct cYear */
     const cfg = await API.getConfig();
-    /* Apply years + cYear BEFORE fetching year data */
     if (cfg.years && cfg.years.length) {
       S.years = cfg.years;
-      if (!S.years.includes(cYear)) {
-        cYear = S.years[S.years.length - 1];
-        S.currentYear = cYear;
-      }
-    }
-    /* Now fetch the correct year's data + pending */
-    const [ydData, pend] = await Promise.all([
-      API.getData(cYear),
-      API.getPending(cYear)
-    ]);
-    /* Only merge backend values if they are non-empty.
-       An unconfigured backend returns empty arrays/objects — we must
-       not let those overwrite good local defaults. */
-    if (cfg.years && cfg.years.length) {
-      S.years = cfg.years;
-      /* Switch to the LATEST year from the backend if current year
-         isn't in the backend's list — this fixes mobile first-load */
-      if (!S.years.includes(cYear)) {
-        cYear = S.years[S.years.length - 1];
-        S.currentYear = cYear;
-      }
+      if (!S.years.includes(cYear)) { cYear = S.years[S.years.length - 1]; S.currentYear = cYear; }
     }
     if (cfg.categories && cfg.categories.length) S.categories = cfg.categories;
     if (cfg.subRates   && cfg.subRates.length)   S.subRates   = cfg.subRates;
     if (cfg.tablerPins && Object.keys(cfg.tablerPins).length) S.tablerPins = cfg.tablerPins;
-    /* Passwords: only overwrite if backend has all three roles populated */
-    if (cfg.passwords && cfg.passwords.treasurer && cfg.passwords.chairman) {
-      S.passwords = cfg.passwords;
-    }
-    /* Re-fetch year data if cYear changed after syncing the years list */
-    let finalYdData = ydData;
-    if (finalYdData && finalYdData._fetchedFor && finalYdData._fetchedFor !== cYear) {
-      finalYdData = await API.getData(cYear);
-    }
-    if (finalYdData && finalYdData.data) {
-      /* Merge: ensure all arrays exist */
-      const d = finalYdData.data;
-      if (!d.members)       d.members = [];
-      if (!d.journal)       d.journal = [];
-      if (!d.subscriptions) d.subscriptions = [];
-      if (!d.budgets)       d.budgets = {};
-      if (!d.settings)      d.settings = { bankOpen:0, cashOpen:0 };
-      S.yearData[cYear] = d;
-    }
-    /* Merge server pending with local pending (server is authoritative) */
-    const serverPending = (pend && pend.items) ? pend.items : [];
-    const serverIds     = new Set(serverPending.map(p => String(p.id)));
-    /* Keep any local pending that the server doesn't know about yet */
-    const localOnly = (S.pending || []).filter(p => !serverIds.has(String(p.id)));
-    S.pending = [...serverPending, ...localOnly];
-    sv();
+    if (cfg.passwords  && cfg.passwords.treasurer && cfg.passwords.chairman) S.passwords = cfg.passwords;
 
-    /* Retry any local-only pending that haven't been synced yet */
-    for (const p of localOnly) {
+    /* Year data + pending in parallel */
+    const [ydData, pend] = await Promise.all([API.getData(cYear), API.getPending(cYear)]);
+    if (ydData && ydData.data) {
+      const d = ydData.data;
+      ['members','journal','subscriptions','sgtIncome','miscIncome','expenses'].forEach(k=>{ if(!d[k]) d[k]=[]; });
+      if (!d.budgets)  d.budgets  = {};
+      if (!d.settings) d.settings = { bankOpen:0, cashOpen:0 };
+      S.yearData[cYear] = d;
+      if (ydData.syncToken) _lastServerTs = ydData.syncToken;
+    }
+
+    /* Merge pending */
+    const srvPend = (pend && pend.items) ? pend.items : [];
+    const srvIds  = new Set(srvPend.map(p => String(p.id)));
+    const locOnly = (S.pending || []).filter(p => !srvIds.has(String(p.id)));
+    S.pending = [...srvPend, ...locOnly];
+    for (const p of locOnly) {
       if (!isSynced(p.id)) {
-        try {
-          await API.submitExpense(p.year || cYear, p);
-          markSynced(p.id);
-        } catch(e) { /* Will retry on next load */ }
+        try { await API.submitExpense(p.year || cYear, p); markSynced(p.id); } catch(e) {}
       }
     }
-
-    /* Also retry a failed syncSave if flagged */
-    if (S._pendingSync) {
-      delete S._pendingSync;
-      syncSave();
-    }
+    if (S._pendingSync) { delete S._pendingSync; }
 
     S._everSynced = true;
     isOnline = true;
+    sv();
     showSyncStatus('saved');
-    sv(); // persist the everSynced flag
     buildYrSel();
     renderTab(document.querySelector('.tab-panel.active')?.id?.replace('tab-','') || 'dashboard');
     updatePendingBadge();
+    startPolling();
+    startKeepalive();
   } catch(e) {
     console.warn('Sync load failed:', e.message);
-    isOnline = false;
-    showSyncStatus('offline');
+    isOnline = false; showSyncStatus('offline');
   } finally {
     setSyncing(false);
     showLoadingOverlay(false);
   }
 }
 
-/* ── Sync ID tracking ──────────────────────────────────────────
-   We keep a Set of IDs that have been successfully synced to the
-   backend. Before syncing a record we check this set — if the ID
-   is already there we skip it, preventing duplicate entries even
-   when the network drops mid-request and the user retries.
-   ──────────────────────────────────────────────────────────────── */
-function getSyncedIds() {
-  try { return new Set(JSON.parse(localStorage.getItem(SYNC_KEY) || '[]')); }
-  catch(e) { return new Set(); }
-}
-function markSynced(id) {
-  const ids = getSyncedIds();
-  ids.add(String(id));
-  /* Cap at 2000 entries to avoid unbounded growth */
-  const arr = [...ids];
-  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
-  localStorage.setItem(SYNC_KEY, JSON.stringify(arr));
-}
-function isSynced(id) { return getSyncedIds().has(String(id)); }
-
-/**
- * Save to backend — always saves to localStorage first (offline-safe).
- * Uses a SYNC_TOKEN approach: each save gets a unique token.
- * If the same token is already on the server, the save is skipped,
- * preventing duplicate writes even if the network drops mid-POST.
- */
-let _syncTimer = null;
-async function syncSave() {
-  sv(); // always write locally first — instant, never fails
+/* ══ SMART POLLING — 15s interval ═════════════════════════
+   Checks server's updatedAt. Only fetches full data if changed.
+   2 users see each other's changes within 15s, minimal load.
+   ═════════════════════════════════════════════════════════ */
+function startPolling() {
+  if (_pollTimer) clearInterval(_pollTimer);
   if (!API.url) return;
-  /* Debounce: coalesce rapid saves into one request after 800ms */
-  if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(_doSync, 800);
+  _pollTimer = setInterval(_poll, 15000);
 }
 
-async function _doSync() {
-  _syncTimer = null;
-  if (!API.url || isSyncing) {
-    if (isSyncing) setTimeout(_doSync, 1000);
-    return;
-  }
-  setSyncing(true);
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+async function _poll() {
+  if (!API.url || isSyncing || _syncTimer) return;
   try {
-    const syncToken = genId('tok');
-    await Promise.all([
-      API.saveData(cYear, yd(), syncToken),
-      API.saveConfig({
-        years:           S.years,
-        categories:      S.categories,
-        subRates:        S.subRates,
-        passwords:       S.passwords,
-        tablerPins:      S.tablerPins || {},
-        defaultTablerPin: S.defaultTablerPin || '0273'
-      })
-    ]);
-    isOnline = true;
-    showSyncStatus('saved');
-  } catch(e) {
-    console.warn('Sync save failed:', e.message);
-    showSyncStatus('err');
-    S._pendingSync = true;
-    sv();
-  } finally {
-    setSyncing(false);
-  }
+    const ts = await API.call('getUpdatedAt', { year: cYear });
+    if (ts && ts.updatedAt && ts.updatedAt !== _lastServerTs) {
+      _lastServerTs = ts.updatedAt;
+      /* Someone else updated — pull latest */
+      const ydData = await API.getData(cYear);
+      if (ydData && ydData.data) {
+        const d = ydData.data;
+        ['members','journal','subscriptions','sgtIncome','miscIncome','expenses'].forEach(k=>{ if(!d[k]) d[k]=[]; });
+        if (!d.budgets)  d.budgets  = {};
+        if (!d.settings) d.settings = { bankOpen:0, cashOpen:0 };
+        S.yearData[cYear] = d;
+        sv();
+        /* Re-render active tab */
+        const active = document.querySelector('.tab-panel.active');
+        if (active) renderTab(active.id.replace('tab-',''));
+        updatePendingBadge();
+        showSyncStatus('saved');
+      }
+    }
+  } catch(e) { /* silent — no UI disruption on poll failure */ }
 }
 
-/* Override sv() to also trigger backend sync */
-function sv() {
-  localStorage.setItem(SK, JSON.stringify(S));
-}
-/* Wrapper used after every data-modifying operation */
-function svSync() {
-  sv();
-  syncSave(); // fire and forget
+/* ══ KEEPALIVE — prevents GAS cold start ══════════════════
+   Pings GAS every 4 minutes. Warm GAS = <1s response.
+   Cold GAS = 5-25s response (terrible UX).
+   ═════════════════════════════════════════════════════════ */
+function startKeepalive() {
+  if (_keepaliveTimer) clearInterval(_keepaliveTimer);
+  if (!API.url) return;
+  _keepaliveTimer = setInterval(() => API.call('ping').catch(()=>{}), 4 * 60 * 1000);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SETTINGS — GAS URL + Tabler PINs
-   ═══════════════════════════════════════════════════════════ */
+
 function saveGasUrl() {
   const url = document.getElementById('gasUrl').value.trim();
   const pin = document.getElementById('defaultPin').value.trim();
