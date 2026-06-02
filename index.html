@@ -2841,37 +2841,52 @@ function renderJrnl() {
      ─────────────────────────────────────────────────────────── */
   const netOwed = {}; /* key = party name, value = positive means they owe us */
 
-  d.journal.forEach(j => {
-    const party = j.from === 'Bank' || j.from === 'Cash' || j.from === 'JRT Trust'
-      ? j.to   /* money went TO this person */
-      : j.from; /* money came FROM this person */
+  /* Table's own accounts — money in these belongs to the table */
+  const TABLE_ACCOUNTS = new Set(['bank', 'cash', 'jrt trust']);
+  const isTableAccount = v => TABLE_ACCOUNTS.has((v||'').toLowerCase().trim());
 
+  d.journal.forEach(j => {
+    /* Only loan entries create obligations — contra is just internal movement */
+    if (!j.type || j.type === 'contra') return;
+
+    const fromIsTable  = isTableAccount(j.from);
+    const toIsTable    = isTableAccount(j.to);
+    const fromIsMember = !fromIsTable;
+    const toIsMember   = !toIsTable;
+
+    /* Identify the external party (the non-table-account side) */
+    let party = null;
+    let tableOwes = false; /* true = table owes the party; false = party owes the table */
+
+    if (fromIsTable && toIsMember) {
+      /* Money LEFT the table and went to a member/entity
+         → that entity received money from table → they owe the table */
+      party     = j.to;
+      tableOwes = false; /* party owes table */
+    } else if (fromIsMember && toIsTable) {
+      /* Money came FROM a member/entity INTO the table
+         → table received money from that entity → table owes them */
+      party     = j.from;
+      tableOwes = true; /* table owes party */
+    } else if (fromIsMember && toIsMember) {
+      /* Both sides are external — rare, treat 'from' as the creditor */
+      party     = j.from;
+      tableOwes = true;
+    }
+    /* fromIsTable && toIsTable = internal contra, skip */
+
+    if (!party) return;
     if (!netOwed[party]) netOwed[party] = 0;
 
-    if (j.type === 'loan_given') {
-      /* We gave money to 'party' — they owe us */
-      const p = (j.to !== 'Bank' && j.to !== 'Cash' && j.to !== 'JRT Trust') ? j.to : j.from;
-      if (!netOwed[p]) netOwed[p] = 0;
-      netOwed[p] += j.amount;
-    } else if (j.type === 'loan_received') {
-      /* We received money from 'party' — we owe them */
-      const p = (j.from !== 'Bank' && j.from !== 'Cash' && j.from !== 'JRT Trust') ? j.from : j.to;
-      if (!netOwed[p]) netOwed[p] = 0;
-      netOwed[p] -= j.amount;
-    } else if (j.type === 'loan_repaid') {
-      /* Loan repaid — determine direction from From/To */
-      const isMemberFrom = (j.from !== 'Bank' && j.from !== 'Cash' && j.from !== 'JRT Trust');
-      if (isMemberFrom) {
-        /* Member repaid us — reduces what they owe */
-        if (!netOwed[j.from]) netOwed[j.from] = 0;
-        netOwed[j.from] -= j.amount;
-      } else {
-        /* We repaid someone — reduces what we owe */
-        if (!netOwed[j.to]) netOwed[j.to] = 0;
-        netOwed[j.to] += j.amount;
-      }
+    if (j.type === 'loan_repaid') {
+      /* Loan repaid reduces the obligation in whatever direction it was */
+      /* If party owed table and they repaid → reduce positive balance */
+      /* If table owed party and we repaid  → reduce negative balance */
+      netOwed[party] += tableOwes ? j.amount : -j.amount;
+    } else {
+      /* loan_given or loan_received — record the obligation */
+      netOwed[party] += tableOwes ? -j.amount : j.amount;
     }
-    /* contra entries: no net obligation, just cash↔bank movement */
   });
 
   /* Remove entries with zero net (fully settled) */
@@ -2900,7 +2915,7 @@ function renderJrnl() {
                 <td style="padding:9px 12px;font-weight:600;border-bottom:1px solid var(--border)">${party}</td>
                 <td style="padding:9px 12px;font-family:'Sora',sans-serif;font-weight:700;border-bottom:1px solid var(--border);color:${owesUs?'var(--red)':'var(--amber)'}">${INR(abs)}</td>
                 <td style="padding:9px 12px;border-bottom:1px solid var(--border)">
-                  <span class="badge ${owesUs?'b-due':'b-loan'}">${owesUs?'Owes Table':'Table Owes'}</span>
+                  <span class="badge ${owesUs?'b-due':'b-loan'}" title="${owesUs?party+' owes the table '+INR(abs):'Table owes '+party+' '+INR(abs)}">${owesUs?'Owes Table ↑':'Table Owes ↓'}</span>
                 </td>
               </tr>`;
             }).join('')}
@@ -2914,8 +2929,8 @@ function renderJrnl() {
     `<tr><td>${i+1}</td><td>${j.date}</td>
      <td><span class="badge ${j.type.startsWith('loan')?'b-loan':'b-contra'}">${j.type.replace(/_/g,' ')}</span></td>
      <td>${j.desc}</td>
-     <td><span class="badge b-${(j.from||'').toLowerCase().replace(/\s+/g,'-')}">${j.from}</span></td>
-     <td><span class="badge b-${(j.to||'').toLowerCase().replace(/\s+/g,'-')}">${j.to}</span></td>
+     <td><span class="badge ${['bank','cash','jrt trust'].includes((j.from||'').toLowerCase())?'b-'+(j.from||'').toLowerCase().replace(/\s+/g,'-'):'b-tabler'}">${j.from}</span></td>
+     <td><span class="badge ${['bank','cash','jrt trust'].includes((j.to||'').toLowerCase())?'b-'+(j.to||'').toLowerCase().replace(/\s+/g,'-'):'b-tabler'}">${j.to}</span></td>
      <td class="amt">${INR(j.amount)}</td>
      ${edit?`<td><div class="actions"><button class="btn btn-ghost btn-sm" onclick="openJrnlMo(this.dataset.id)" data-id="${j.id}">✏️</button><button class="btn btn-danger btn-sm" onclick="delJrnl(this.dataset.id)" data-id="${j.id}">🗑</button></div></td>`:''}</tr>`
   ).join('') || '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;text-align:center">No journal entries yet.</td></tr>';
