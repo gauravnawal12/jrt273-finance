@@ -2615,8 +2615,29 @@ function saveExp() {
 
 function delExp(id) {
   if (!confirm('Permanently delete this expense?')) return;
-  yd().expenses=yd().expenses.filter(e=>String(e.id)!==String(id));
-  svSync(); filterExp(); renderDashboard(); toast('Expense deleted','err');
+
+  /* Check if this expense originated from a tabler submission */
+  const exp = (yd().expenses || []).find(e => String(e.id) === String(id));
+  if (exp && exp.pendingId) {
+    /* Mark the original pending record as rejected so Tabler sees the status update */
+    const pidx = (S.pending || []).findIndex(p => String(p.id) === String(exp.pendingId));
+    if (pidx >= 0) {
+      S.pending[pidx].status       = 'rejected';
+      S.pending[pidx].rejectReason = 'Removed by Treasurer';
+      S.pending[pidx].reviewedAt   = new Date().toISOString();
+      /* Tell backend about the status change */
+      if (API.url) {
+        API.reviewExpense(cYear, exp.pendingId, 'rejected', 'Removed by Treasurer')
+           .catch(e => console.warn('Pending status update failed:', e.message));
+      }
+    }
+  }
+
+  yd().expenses = yd().expenses.filter(e => String(e.id) !== String(id));
+  svSync();
+  filterExp();
+  renderDashboard();
+  toast('Expense deleted', 'err');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -3521,7 +3542,9 @@ async function syncLoad() {
     }
 
     /* Merge pending */
-    const srvPend = (pend && pend.items) ? pend.items : [];
+    /* Normalise status to lowercase when merging from backend */
+    const normPend = (arr) => (arr || []).map(p => ({...p, status: (p.status||'pending').toLowerCase()}));
+    const srvPend = normPend((pend && pend.items) ? pend.items : []);
     const srvIds  = new Set(srvPend.map(p => String(p.id)));
     const locOnly = (S.pending || []).filter(p => !srvIds.has(String(p.id)));
     S.pending = [...srvPend, ...locOnly];
@@ -3654,7 +3677,7 @@ function saveTablerPins() {
    PENDING APPROVALS
    ═══════════════════════════════════════════════════════════ */
 function updatePendingBadge() {
-  const pending = (S.pending || []).filter(p => p.year === cYear && p.status === 'pending');
+  const pending = (S.pending || []).filter(p => p.year === cYear && (p.status||'').toLowerCase() === 'pending');
   const banner  = document.getElementById('pendingApprovalsBanner');
   const countEl = document.getElementById('pendingCount');
   if (banner && canEd()) {
@@ -3668,7 +3691,14 @@ async function openPendingModal() {
   if (API.url) {
     try {
       const pend = await API.getPending(cYear);
-      if (pend && pend.items) { S.pending = pend.items; sv(); }
+      if (pend && pend.items) {
+        /* Normalise status to lowercase for consistent comparison */
+        S.pending = pend.items.map(p => ({
+          ...p,
+          status: (p.status || 'pending').toLowerCase()
+        }));
+        sv();
+      }
     } catch(e) { console.warn('Pending refresh failed'); }
   }
   renderPendingList();
@@ -3683,13 +3713,14 @@ function renderPendingList() {
     return;
   }
   el.innerHTML = pending.map(p => {
+    const statusKey = (p.status || 'pending').toLowerCase();
     const statusBadge = {
       pending:  '<span class="badge b-bank">Pending Review</span>',
       approved: '<span class="badge b-paid">Approved</span>',
       rejected: '<span class="badge b-due">Rejected</span>'
-    }[p.status] || '';
+    }[statusKey] || '';
     return `
-      <div style="border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;${p.status==='approved'?'opacity:.6':''}">
+      <div style="border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;${(p.status||'').toLowerCase()==='approved'?'opacity:.6':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${p.category} — ${p.remark||'No description'}</div>
@@ -3700,7 +3731,7 @@ function renderPendingList() {
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700">${INR(p.amount)}</div>
-            ${p.status==='pending'&&canEd()?`
+            ${(p.status||'').toLowerCase()==='pending'&&canEd()?`
               <div style="display:flex;gap:5px;margin-top:8px;justify-content:flex-end">
                 <button class="btn btn-success btn-sm" onclick="approveExp(this.dataset.id)" data-id="${p.id}">✅ Approve</button>
                 <button class="btn btn-danger btn-sm" onclick="openRejectModal(this.dataset.id)" data-id="${p.id}">✕ Reject</button>
@@ -3717,22 +3748,23 @@ async function approveExp(id) {
 
   /* Add to main expense ledger */
   const exp = {
-    id:       genId('exp'),
+    id:        genId('exp'),
     /* Normalize date — tabler submissions may arrive as full ISO string */
-    date:     (p.date || '').slice(0, 10),
-    amount:   p.amount,
-    category: p.category,
-    name:     p.submittedBy,
-    mode:     p.mode,
-    period:   dateToQ(p.date),
-    paid:     false, /* Treasurer still needs to confirm payment */
-    remark:   p.remark + ' [Tabler submitted]'
+    date:      (p.date || '').slice(0, 10),
+    amount:    p.amount,
+    category:  p.category,
+    name:      p.submittedBy,
+    mode:      p.mode,
+    period:    dateToQ(p.date),
+    paid:      false, /* Treasurer still needs to confirm payment */
+    remark:    p.remark + ' [Tabler submitted]',
+    pendingId: id   /* link back to the pending record — used if expense is later deleted */
   };
   (yd().expenses || (yd().expenses = [])).push(exp);
 
   /* Update pending status */
   const pidx = S.pending.findIndex(x => x.id === id);
-  if (pidx >= 0) S.pending[pidx].status = 'approved';
+  if (pidx >= 0) S.pending[pidx].status = 'approved';  /* lowercase — consistent with backend normalisation */
 
   svSync();
 
@@ -3921,16 +3953,22 @@ async function loadTablerHistory() {
   if (API.url) {
     try {
       const pend = await API.getPending(cYear);
-      if (pend && pend.items) { S.pending = pend.items; sv(); }
+      if (pend && pend.items) {
+        /* Normalise status to lowercase for consistent comparison */
+        S.pending = pend.items.map(p => ({
+          ...p,
+          status: (p.status || 'pending').toLowerCase()
+        }));
+        sv();
+      }
     } catch(e) { /* use local */ }
   }
 
   const myExp = (S.pending || []).filter(p => p.year === cYear && p.submittedBy === tablerUser.name);
 
   /* Compute unpaid totals */
-  const unpaid = myExp.filter(p => p.status === 'approved' || p.status === 'Approved');
-  /* Also include pending (not yet rejected) as "to be confirmed" */
-  const pending = myExp.filter(p => p.status === 'pending' || p.status === 'Pending');
+  const unpaid = myExp.filter(p => (p.status||'').toLowerCase() === 'approved');
+  const pending = myExp.filter(p => (p.status||'').toLowerCase() === 'pending');
   const unpaidTotal = unpaid.reduce((s, p) => s + (+p.amount || 0), 0);
   const pendingTotal = pending.reduce((s, p) => s + (+p.amount || 0), 0);
   const banner = document.getElementById('tablerUnpaidBanner');
@@ -3960,12 +3998,12 @@ async function loadTablerHistory() {
   el.innerHTML = myExp.map(p => {
     const statusMap = {
       pending:  { badge:'b-bank', text:'Pending Review', icon:'⏳' },
-      approved: { badge:'b-paid', text:'Approved', icon:'✅' },
+      approved: { badge:'b-paid', text:'Approved ✅', icon:'✅' },
       rejected: { badge:'b-due',  text:'Rejected',  icon:'✕' }
     };
-    const s = statusMap[p.status] || statusMap.pending;
+    const s = statusMap[(p.status||'pending').toLowerCase()] || statusMap.pending;
     return `
-      <div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;margin-bottom:9px;${p.status==='rejected'?'border-color:var(--red-bd);background:var(--red-bg)':''}">
+      <div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;margin-bottom:9px;${(p.status||'').toLowerCase()==='rejected'?'border-color:var(--red-bd);background:var(--red-bg)':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;margin-bottom:3px">${p.category}</div>
