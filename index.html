@@ -2095,7 +2095,15 @@ function genId(prefix) {
 }
 /* Keep uid() as alias for backward-compat with existing records */
 const uid = () => genId('id');
-const td  = () => new Date().toISOString().slice(0,10);
+/* Return today's date in YYYY-MM-DD using LOCAL timezone (not UTC).
+   toISOString() returns UTC which can be the previous day in IST (UTC+5:30). */
+const td = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+};
 
 /**
  * JRT 273 tabling year runs 1 July – 30 June.
@@ -2103,11 +2111,14 @@ const td  = () => new Date().toISOString().slice(0,10);
  */
 function dateToQ(dateStr) {
   if (!dateStr) return 'Q1';
-  const m = new Date(dateStr).getMonth() + 1;
+  /* Parse month directly from YYYY-MM-DD string — avoids timezone offset bug.
+     new Date('2026-07-01') is midnight UTC which shifts to June 30 in UTC+5:30. */
+  const clean = String(dateStr).slice(0, 10); // handle ISO strings like 2026-07-01T18:30:00Z
+  const m = parseInt(clean.split('-')[1], 10);
   if (m >= 7  && m <= 9)  return 'Q1';
   if (m >= 10 && m <= 12) return 'Q2';
   if (m >= 1  && m <= 3)  return 'Q3';
-  return 'Q4';
+  return 'Q4'; /* Apr-Jun = Q4 */
 }
 
 /** Show toast notification */
@@ -2605,7 +2616,7 @@ function openExpMo(id) {
 
 function saveExp() {
   const id=document.getElementById('expId').value;
-  const expDate=document.getElementById('expDt').value;
+  const expDate = (document.getElementById('expDt').value || '').slice(0, 10);
   const ex={ id:id?String(id):genId('exp'), date:expDate, amount:+document.getElementById('expAm').value, category:document.getElementById('expCt').value, name:document.getElementById('expNm').value, mode:document.getElementById('expMd').value, period:dateToQ(expDate), paid:document.getElementById('expPd').value==='true', remark:document.getElementById('expRm').value };
   if (!ex.date||!ex.amount||!ex.category) { toast('Please fill Date, Amount and Category','err'); return; }
   const d=yd();
@@ -3851,7 +3862,7 @@ function doTablerLogin() {
   document.getElementById('tExpCat').innerHTML = S.categories.map(c => `<option>${c}</option>`).join('');
 
   /* Set today's date and auto-quarter */
-  const today = new Date().toISOString().slice(0,10);
+  const today = td();
   document.getElementById('tExpDt').value = today;
   document.getElementById('tExpQ').value  = dateToQ(today);
 
@@ -3868,7 +3879,9 @@ function logoutTabler() {
 }
 
 async function submitTablerExp() {
-  const dt   = (document.getElementById('tExpDt').value || '').slice(0, 10);
+  /* Normalise date: strip time/timezone portion, keep YYYY-MM-DD only */
+  const rawDt = document.getElementById('tExpDt').value || '';
+  const dt    = rawDt.slice(0, 10); /* handles both 'YYYY-MM-DD' and full ISO strings */
   const amt  = +document.getElementById('tExpAmt').value;
   const cat  = document.getElementById('tExpCat').value;
   const mode = document.getElementById('tExpMode').value;
