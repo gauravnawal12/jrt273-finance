@@ -3522,6 +3522,40 @@ async function _doSync() {
   }
 }
 
+
+/* ── Normalise a pending item from backend ──────────────────────
+   Strips time/timezone from dates, lowercases status.
+   Old entries stored full ISO strings (2026-06-30T18:30:00.000Z)
+   — this converts them to clean YYYY-MM-DD everywhere. */
+function normalisePendingItem(p) {
+  return Object.assign({}, p, {
+    status: (p.status || 'pending').toLowerCase(),
+    date:   isoToLocalDate(p.date   || ''),
+    submittedAt: (p.submittedAt || '').slice(0, 10)
+  });
+}
+
+/**
+ * Convert any date string to local YYYY-MM-DD.
+ * If the string is a plain date (2026-07-01) return as-is.
+ * If it's a UTC ISO string (2026-06-30T18:30:00.000Z), parse it
+ * through Date() and extract local year/month/day — this converts
+ * the UTC timestamp back to the correct local date.
+ */
+function isoToLocalDate(str) {
+  if (!str) return '';
+  const s = String(str);
+  /* Plain YYYY-MM-DD — no conversion needed */
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  /* Has time component — parse and extract LOCAL date */
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s.slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
 /* ══ LOAD PATH — full fetch from backend ══════════════════ */
 async function syncLoad() {
   if (!API.url) { isOnline = false; showSyncStatus('offline'); return; }
@@ -3554,7 +3588,7 @@ async function syncLoad() {
 
     /* Merge pending */
     /* Normalise status to lowercase when merging from backend */
-    const normPend = (arr) => (arr || []).map(p => ({...p, status: (p.status||'pending').toLowerCase()}));
+    const normPend = (arr) => (arr || []).map(normalisePendingItem);
     const srvPend = normPend((pend && pend.items) ? pend.items : []);
     const srvIds  = new Set(srvPend.map(p => String(p.id)));
     const locOnly = (S.pending || []).filter(p => !srvIds.has(String(p.id)));
@@ -3704,10 +3738,7 @@ async function openPendingModal() {
       const pend = await API.getPending(cYear);
       if (pend && pend.items) {
         /* Normalise status to lowercase for consistent comparison */
-        S.pending = pend.items.map(p => ({
-          ...p,
-          status: (p.status || 'pending').toLowerCase()
-        }));
+        S.pending = pend.items.map(normalisePendingItem);
         sv();
       }
     } catch(e) { console.warn('Pending refresh failed'); }
@@ -3736,7 +3767,7 @@ function renderPendingList() {
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${p.category} — ${p.remark||'No description'}</div>
             <div style="font-size:11px;color:var(--text-muted)">
-              ${p.submittedBy} · ${p.date} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · Q${p.period||dateToQ(p.date)} ${statusBadge}
+              ${p.submittedBy} · ${isoToLocalDate(p.date||'')} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · Q${p.period||dateToQ(p.date)} ${statusBadge}
             </div>
             ${p.rejectReason ? `<div style="font-size:11px;color:var(--red);margin-top:4px">Rejection reason: ${p.rejectReason}</div>` : ''}
           </div>
@@ -3968,10 +3999,7 @@ async function loadTablerHistory() {
       const pend = await API.getPending(cYear);
       if (pend && pend.items) {
         /* Normalise status to lowercase for consistent comparison */
-        S.pending = pend.items.map(p => ({
-          ...p,
-          status: (p.status || 'pending').toLowerCase()
-        }));
+        S.pending = pend.items.map(normalisePendingItem);
         sv();
       }
     } catch(e) { /* use local */ }
@@ -4020,7 +4048,7 @@ async function loadTablerHistory() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;margin-bottom:3px">${p.category}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${p.date} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · <span class="badge b-${(p.period||'q1').toLowerCase()}">${p.period}</span></div>
+            <div style="font-size:11px;color:var(--text-muted)">${isoToLocalDate(p.date||'')} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · <span class="badge b-${(p.period||'q1').toLowerCase()}">${p.period}</span></div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${p.remark}</div>
             ${p.rejectReason ? `<div style="font-size:11px;color:var(--red);margin-top:5px;padding:5px 8px;background:var(--red-bg);border-radius:4px;border:1px solid var(--red-bd)"><strong>Rejection reason:</strong> ${p.rejectReason}</div>` : ''}
           </div>
