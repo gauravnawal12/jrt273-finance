@@ -3856,14 +3856,56 @@ async function confirmReject() {
    ═══════════════════════════════════════════════════════════ */
 let tablerUser = null; /* { name, type } of logged-in tabler */
 
-function openTablerLogin() {
-  const members = (yd().members || []).filter(m => m.status === 'active' && m.type !== 'Guest');
-  document.getElementById('tablerNameSel').innerHTML = members.length
-    ? members.map(m => `<option value="${m.name}" data-type="${m.type}">${m.name} (${m.type})</option>`).join('')
-    : '<option value="">No active members found</option>';
+async function openTablerLogin() {
+  /* Show modal immediately with loading state */
   document.getElementById('tablerPin').value = '';
   document.getElementById('tablerLoginErr').textContent = '';
+  document.getElementById('tablerNameSel').innerHTML = '<option value="">Loading members…</option>';
   oMo('moTablerLogin');
+
+  /* If local members list is empty, pull from backend first.
+     This happens on a fresh device that hasn't synced yet. */
+  let members = (yd().members || []).filter(m => m.status === 'active' && m.type !== 'Guest');
+
+  if (!members.length && API.url) {
+    try {
+      document.getElementById('tablerLoginErr').textContent = 'Fetching members…';
+      document.getElementById('tablerLoginErr').style.color = 'var(--t3)';
+
+      /* Fetch config (years list) then year data */
+      const cfg = await API.getConfig();
+      if (cfg.years && cfg.years.length) {
+        S.years = cfg.years;
+        /* Pick the most recent year */
+        const fetchYear = S.years.includes(cYear) ? cYear : S.years[S.years.length - 1];
+        if (fetchYear !== cYear) { cYear = fetchYear; S.currentYear = cYear; }
+      }
+      if (cfg.categories && cfg.categories.length) S.categories = cfg.categories;
+      if (cfg.subRates   && cfg.subRates.length)   S.subRates   = cfg.subRates;
+      if (cfg.tablerPins && Object.keys(cfg.tablerPins).length) S.tablerPins = cfg.tablerPins;
+      if (cfg.passwords  && cfg.passwords.treasurer && cfg.passwords.chairman) S.passwords = cfg.passwords;
+
+      const ydData = await API.getData(cYear);
+      if (ydData && ydData.data) {
+        const d = ydData.data;
+        if (!d.members) d.members = [];
+        S.yearData[cYear] = d;
+        sv();
+      }
+
+      members = (yd().members || []).filter(m => m.status === 'active' && m.type !== 'Guest');
+      document.getElementById('tablerLoginErr').textContent = '';
+    } catch(e) {
+      document.getElementById('tablerLoginErr').textContent = 'Could not load members. Check your connection.';
+      document.getElementById('tablerLoginErr').style.color = 'var(--red)';
+      document.getElementById('tablerNameSel').innerHTML = '<option value="">Failed to load — try again</option>';
+      return;
+    }
+  }
+
+  document.getElementById('tablerNameSel').innerHTML = members.length
+    ? members.map(m => `<option value="${m.name}" data-type="${m.type}">${m.name} (${m.type})</option>`).join('')
+    : '<option value="">No active members found — contact Treasurer</option>';
 }
 
 function doTablerLogin() {
