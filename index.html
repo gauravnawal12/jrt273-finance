@@ -2633,38 +2633,48 @@ function saveExp() {
       if (prev.pendingId && !ex.pendingId) ex.pendingId = prev.pendingId;
       d.expenses[i] = ex;
 
-      /* When paid status changes to true, update the linked pending record
-         so the Tabler sees "Paid ✅" instead of "Approved" in their history.
-         
-         Two lookup strategies:
-         1. Direct: via pendingId field (expenses approved after the fix was deployed)
-         2. Fallback: match by submittedBy name + amount + category (older expenses
-            that were approved before pendingId was added to the code) */
-      if (ex.paid && !prev.paid) {
+      /* Sync pending record status whenever paid flag changes.
+         Handles both directions:
+           unpaid → paid  : pending becomes 'paid'
+           paid → unpaid  : pending reverts to 'approved'
+
+         Two lookup strategies for finding the pending record:
+         1. Direct   — via pendingId field (set on approval)
+         2. Fallback — match by name + amount + category (pre-pendingId expenses) */
+
+      const paidChanged = ex.paid !== prev.paid;
+      if (paidChanged) {
+        /* Find the linked pending record ID */
         let targetPendingId = ex.pendingId;
 
-        /* Fallback: find matching pending record by expense details */
         if (!targetPendingId) {
-          const match = (S.pending || []).find(p =>
-            (p.status||'').toLowerCase() === 'approved' &&
-            String(p.amount)   === String(ex.amount) &&
-            String(p.category) === String(ex.category) &&
-            (p.submittedBy || '') === (ex.name || '')
-          );
+          /* Fallback: search by matching details in either paid or approved state */
+          const match = (S.pending || []).find(p => {
+            const st = (p.status||'').toLowerCase();
+            return (st === 'approved' || st === 'paid') &&
+              String(p.amount)      === String(ex.amount)   &&
+              String(p.category)    === String(ex.category) &&
+              (p.submittedBy || '') === (ex.name || '');
+          });
           if (match) {
             targetPendingId = match.id;
-            /* Backfill pendingId on the expense so future saves use direct lookup */
-            ex.pendingId = match.id;
+            ex.pendingId    = match.id;  /* backfill for future saves */
           }
         }
 
         if (targetPendingId) {
           const pidx = (S.pending || []).findIndex(p => String(p.id) === String(targetPendingId));
           if (pidx >= 0) {
-            S.pending[pidx].status = 'paid';
+            /* paid → 'paid' status, unpaid → revert to 'approved' */
+            const newStatus = ex.paid ? 'paid' : 'approved';
+            S.pending[pidx].status = newStatus;
+            if (newStatus === 'approved') {
+              /* Clear the rejectReason so no stale message shows */
+              S.pending[pidx].rejectReason = '';
+            }
             if (API.url) {
-              API.reviewExpense(cYear, targetPendingId, 'paid', '')
-                 .catch(e => console.warn('Pending paid update failed:', e.message));
+              API.reviewExpense(cYear, targetPendingId, newStatus, '')
+                 .catch(e => console.warn('Pending status sync failed:', e.message));
             }
           }
         }
