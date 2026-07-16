@@ -1178,228 +1178,6 @@ function showLoadingOverlay(show) {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TRUST MODULE
-   Completely separate from Table finances.
-   trustExpenses: [] in yearData
-   trustSettings: { bankOpen, cashOpen } in yearData
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ── Render Trust Tab ─────────────────────────────────────────── */
-function renderTrust() {
-  const d    = yd();
-  const ts   = d.trustSettings || { bankOpen:0, cashOpen:0 };
-  const edit = canEd();
-
-  /* Year label */
-  const yl = document.getElementById('trustYrLabel');
-  if (yl) yl.textContent = cYear;
-
-  /* Opening balance fields — read-only for non-treasurer */
-  const bnkEl = document.getElementById('tBnk');
-  const cshEl = document.getElementById('tCsh');
-  if (bnkEl) { bnkEl.value = ts.bankOpen || ''; bnkEl.disabled = !edit; }
-  if (cshEl) { cshEl.value = ts.cashOpen || ''; cshEl.disabled = !edit; }
-
-  /* Add Trust Expense button — treasurer only */
-  const addBtn = document.getElementById('btnAddTrustExp');
-  if (addBtn) addBtn.disabled = !edit;
-
-  /* Compute position */
-  const exps = d.trustExpenses || [];
-  const teBk = exps.filter(e=>e.mode==='Bank').reduce((a,e)=>a+e.amount,0);
-  const teCh = exps.filter(e=>e.mode==='Cash').reduce((a,e)=>a+e.amount,0);
-  const bankClose = (ts.bankOpen||0) - teBk;
-  const cashClose = (ts.cashOpen||0) - teCh;
-  const net       = bankClose + cashClose;
-
-  const surpEl = document.getElementById('trustSurp');
-  const bkEl   = document.getElementById('trustBankClose');
-  const chEl   = document.getElementById('trustCashClose');
-  if (surpEl)  { surpEl.textContent  = INR(net); surpEl.style.color = net >= 0 ? '#4ade80' : '#f87171'; }
-  if (bkEl)    { bkEl.textContent    = INR(bankClose); bkEl.style.color = bankClose >= 0 ? '#4ade80' : '#f87171'; }
-  if (chEl)    { chEl.textContent    = INR(cashClose); chEl.style.color = cashClose >= 0 ? '#4ade80' : '#f87171'; }
-
-  /* Populate category filter */
-  const catEl = document.getElementById('trustExpCat');
-  if (catEl && catEl.options.length <= 1) {
-    catEl.innerHTML = '<option value="">Select category</option>' +
-      (S.categories || []).map(c => `<option>${c}</option>`).join('');
-  }
-
-  filterTrustExp();
-}
-
-/* ── Filter & Render Trust Expense Table ─────────────────────── */
-function filterTrustExp() {
-  const d     = yd();
-  const edit  = canEd();
-  const srch  = (document.getElementById('trustSrch')  ?.value || '').toLowerCase();
-  const modF  =  document.getElementById('trustModeF') ?.value || '';
-  const paidF =  document.getElementById('trustPaidF') ?.value || '';
-  const srcF  =  document.getElementById('trustSrcF')  ?.value || '';
-
-  let rows = (d.trustExpenses || []).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
-
-  if (srch)  rows = rows.filter(e => (e.category+e.remark+e.name).toLowerCase().includes(srch));
-  if (modF)  rows = rows.filter(e => e.mode === modF);
-  if (paidF) rows = rows.filter(e => paidF === 'paid' ? e.paid : !e.paid);
-  if (srcF)  rows = rows.filter(e => (e.source||'treasurer') === srcF);
-
-  const total = rows.reduce((a,e)=>a+e.amount, 0);
-  const tbody = document.getElementById('trustExpTbl');
-  const ftr   = document.getElementById('trustExpFtr');
-
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t3)">No trust expenses yet.</td></tr>`;
-    if (ftr) ftr.textContent = '';
-    return;
-  }
-
-  tbody.innerHTML = rows.map(e => `<tr>
-    <td style="white-space:nowrap">${e.date||''}</td>
-    <td>
-      <div style="font-weight:600">${e.category||'—'}</div>
-      <div style="font-size:11px;color:var(--t3)">${e.remark||''}</div>
-    </td>
-    <td class="hm">
-      <div style="font-size:12px">${e.name||'Treasurer'}</div>
-      <div style="font-size:10px;color:var(--t3)">${e.source==='tabler'?'Tabler Submitted':'Direct'}</div>
-    </td>
-    <td class="hm"><span class="badge b-${(e.mode||'cash').toLowerCase()}">${e.mode||'Cash'}</span></td>
-    <td class="amt">${INR(e.amount)}</td>
-    <td><span class="badge ${e.paid?'b-paid':'b-due'}">${e.paid?'Paid':'Unpaid'}</span></td>
-    <td>
-      <div class="actions">
-        <button class="btn btn-ghost btn-sm" onclick="openTrustExpMo('${e.id}')">✏️</button>
-        ${edit ? `<button class="btn btn-danger btn-sm" onclick="delTrustExp('${e.id}')">🗑</button>` : ''}
-      </div>
-    </td>
-  </tr>`).join('');
-
-  if (ftr) ftr.textContent = `${rows.length} entries · Total: ${INR(total)}`;
-}
-
-/* ── Save Trust Opening Balances ─────────────────────────────── */
-function saveTrustBal() {
-  const d = yd();
-  if (!d.trustSettings) d.trustSettings = { bankOpen:0, cashOpen:0 };
-  const bv = +document.getElementById('tBnk').value || 0;
-  const cv = +document.getElementById('tCsh').value || 0;
-  d.trustSettings.bankOpen = bv;
-  d.trustSettings.cashOpen = cv;
-  svSync();
-  /* Re-render position summary */
-  const exps = d.trustExpenses || [];
-  const bankClose = bv - exps.filter(e=>e.mode==='Bank').reduce((a,e)=>a+e.amount,0);
-  const cashClose = cv - exps.filter(e=>e.mode==='Cash').reduce((a,e)=>a+e.amount,0);
-  const net = bankClose + cashClose;
-  const surpEl = document.getElementById('trustSurp');
-  const bkEl   = document.getElementById('trustBankClose');
-  const chEl   = document.getElementById('trustCashClose');
-  if (surpEl)  { surpEl.textContent  = INR(net); surpEl.style.color = net>=0?'#4ade80':'#f87171'; }
-  if (bkEl)    { bkEl.textContent    = INR(bankClose); bkEl.style.color = bankClose>=0?'#4ade80':'#f87171'; }
-  if (chEl)    { chEl.textContent    = INR(cashClose); chEl.style.color = cashClose>=0?'#4ade80':'#f87171'; }
-}
-
-/* ── Open Trust Expense Modal ────────────────────────────────── */
-function openTrustExpMo(id) {
-  const d    = yd();
-  const edit = canEd();
-  const titleEl = document.getElementById('trustExpMoT');
-
-  /* Populate category dropdown */
-  const catEl = document.getElementById('trustExpCat');
-  catEl.innerHTML = '<option value="">Select category</option>' +
-    (S.categories || []).map(c => `<option>${c}</option>`).join('');
-
-  if (id) {
-    const e = (d.trustExpenses || []).find(x => x.id === id);
-    if (!e) return;
-    if (titleEl) titleEl.textContent = 'Edit Trust Expense';
-    document.getElementById('trustExpId').value   = e.id;
-    document.getElementById('trustExpDt').value   = e.date || '';
-    document.getElementById('trustExpCat').value  = e.category || '';
-    document.getElementById('trustExpAmt').value  = e.amount || '';
-    document.getElementById('trustExpMode').value = e.mode || 'Cash';
-    document.getElementById('trustExpRmk').value  = e.remark || '';
-    document.getElementById('trustExpName').value = e.name || '';
-    document.getElementById('trustExpPaid').value = e.paid ? 'true' : 'false';
-  } else {
-    if (titleEl) titleEl.textContent = 'Add Trust Expense';
-    document.getElementById('trustExpId').value   = '';
-    document.getElementById('trustExpDt').value   = td();
-    document.getElementById('trustExpCat').value  = '';
-    document.getElementById('trustExpAmt').value  = '';
-    document.getElementById('trustExpMode').value = 'Cash';
-    document.getElementById('trustExpRmk').value  = '';
-    document.getElementById('trustExpName').value = '';
-    document.getElementById('trustExpPaid').value = 'false';
-  }
-
-  /* Disable editable fields for view-only roles except edit button is always visible */
-  ['trustExpDt','trustExpCat','trustExpAmt','trustExpMode','trustExpRmk','trustExpName','trustExpPaid'].forEach(fid => {
-    const el = document.getElementById(fid);
-    if (el) el.disabled = !edit;
-  });
-  const saveBtn = document.querySelector('#moTrustExp .mo-foot .btn-primary');
-  if (saveBtn) saveBtn.style.display = edit ? '' : 'none';
-
-  oMo('moTrustExp');
-}
-
-/* ── Save Trust Expense ──────────────────────────────────────── */
-function saveTrustExp() {
-  const id  = document.getElementById('trustExpId').value;
-  const dt  = (document.getElementById('trustExpDt').value  || '').slice(0,10);
-  const cat = document.getElementById('trustExpCat').value;
-  const amt = +document.getElementById('trustExpAmt').value || 0;
-  const mod = document.getElementById('trustExpMode').value;
-  const rmk = document.getElementById('trustExpRmk').value.trim();
-  const nm  = document.getElementById('trustExpName').value.trim();
-  const paid = document.getElementById('trustExpPaid').value === 'true';
-
-  if (!dt || !cat || !amt || !rmk) { toast('Fill Date, Category, Amount and Description', 'err'); return; }
-
-  const d = yd();
-  if (!d.trustExpenses) d.trustExpenses = [];
-
-  if (id) {
-    /* Edit existing */
-    const idx = d.trustExpenses.findIndex(e => e.id === id);
-    if (idx >= 0) {
-      d.trustExpenses[idx] = { ...d.trustExpenses[idx], date:dt, category:cat, amount:amt, mode:mod, remark:rmk, name:nm, paid };
-    }
-  } else {
-    /* New */
-    d.trustExpenses.push({ id:genId('texp'), date:dt, category:cat, amount:amt, mode:mod, remark:rmk, name:nm, paid, source:'treasurer' });
-  }
-
-  svSync();
-  cMo('moTrustExp');
-  renderTrust();
-  toast(id ? '✅ Trust expense updated' : '✅ Trust expense added');
-}
-
-/* ── Delete Trust Expense ────────────────────────────────────── */
-function delTrustExp(id) {
-  if (!confirm('Delete this trust expense?')) return;
-  const d = yd();
-  d.trustExpenses = (d.trustExpenses || []).filter(e => e.id !== id);
-  svSync();
-  renderTrust();
-  toast('Trust expense deleted', 'err');
-}
-
-
-function toggleTablerTrust(checked) {
-  /* Visual feedback: highlight the trust checkbox card */
-  const box = document.getElementById('tIsTrust')?.closest('.fg');
-  if (box) box.style.background = checked
-    ? 'rgba(215,168,83,.18)'
-    : 'rgba(215,168,83,.08)';
-}
-
 </script>
 </head>
 <body>
@@ -1517,7 +1295,6 @@ function toggleTablerTrust(checked) {
       <button class="tab-btn" onclick="showTab('journal',this)" data-tab="journal">🔄 Journal</button>
       <button class="tab-btn" onclick="showTab('members',this)" data-tab="members">👥 Members</button>
       <button class="tab-btn" onclick="showTab('pl',this)" data-tab="pl">📈 P&amp;L</button>
-      <button class="tab-btn" onclick="showTab('trust',this)" data-tab="trust">🏛 Trust</button>
       <button class="tab-btn" id="settingsTabBtn" onclick="showTab('settings',this)" data-tab="settings">⚙️ Settings</button>
     </nav>
   </header>
@@ -1669,80 +1446,6 @@ function toggleTablerTrust(checked) {
         <button class="btn btn-primary btn-sm" id="btnAddMem" onclick="openMemMo()">+ Add Member</button>
       </div>
       <div class="table-wrap"><table><thead><tr><th class="ns">#</th><th class="ns">Name</th><th class="ns">Type</th><th class="ns">Status</th><th class="ns" id="memActH">Actions</th></tr></thead><tbody id="memTbl"></tbody></table></div>
-    </div>
-
-    <!-- ══ TRUST ══ -->
-    <div id="tab-trust" class="tab-panel">
-      <div class="page-header">
-        <div>
-          <div class="page-title">JRT Trust</div>
-          <div class="page-subtitle">Trust opening balances and expense ledger — separate from Table accounts</div>
-        </div>
-        <button class="btn btn-primary" id="btnAddTrustExp" onclick="openTrustExpMo()">+ Add Trust Expense</button>
-      </div>
-
-      <!-- Opening Balances -->
-      <div class="card" style="border-left:4px solid var(--gold)">
-        <div class="card-title"><div class="card-title-icon">🏦</div> Trust Opening Balances — <span id="trustYrLabel"></span></div>
-        <p class="text-muted" style="margin-bottom:14px">These are the Trust's own bank and cash balances at the start of the financial year. Separate from Table funds.</p>
-        <div class="fg r2" style="max-width:500px">
-          <div class="fg">
-            <div class="field-label">Trust Bank Opening (₹)</div>
-            <input type="number" id="tBnk" placeholder="0" oninput="saveTrustBal()">
-          </div>
-          <div class="fg">
-            <div class="field-label">Trust Cash Opening (₹)</div>
-            <input type="number" id="tCsh" placeholder="0" oninput="saveTrustBal()">
-          </div>
-        </div>
-      </div>
-
-      <!-- Trust Position Summary -->
-      <div class="surp-banner" id="trustSurpBanner">
-        <div>
-          <div class="surp-label">Trust Net Position (All Expenses)</div>
-          <div id="trustSurp" class="surp-val"></div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px">Opening balance minus all trust expenses</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:right">
-          <div>
-            <div class="surp-label">Trust Bank</div>
-            <div id="trustBankClose" style="font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:#fff"></div>
-          </div>
-          <div>
-            <div class="surp-label">Trust Cash</div>
-            <div id="trustCashClose" style="font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:#fff"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Trust Expense Ledger -->
-      <div class="page-header" style="margin-top:6px">
-        <div class="sub-hdr" style="margin:0;flex:1">Trust Expense Ledger</div>
-      </div>
-      <div class="filter-bar">
-        <input class="fi fi-search" type="text" placeholder="🔍 Search…" oninput="filterTrustExp()" id="trustSrch">
-        <select class="fi" onchange="filterTrustExp()" id="trustModeF"><option value="">All Modes</option><option>Cash</option><option>Bank</option></select>
-        <select class="fi" onchange="filterTrustExp()" id="trustPaidF"><option value="">All Status</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select>
-        <select class="fi" onchange="filterTrustExp()" id="trustSrcF"><option value="">All Sources</option><option value="treasurer">Treasurer</option><option value="tabler">Tabler Submitted</option></select>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="ns">Date</th>
-              <th class="ns">Category / Description</th>
-              <th class="hm ns">Submitted By</th>
-              <th class="hm ns">Mode</th>
-              <th class="ns">Amount</th>
-              <th class="ns">Status</th>
-              <th class="ns">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="trustExpTbl"></tbody>
-        </table>
-      </div>
-      <div id="trustExpFtr" class="text-muted" style="text-align:right;margin-top:6px"></div>
     </div>
 
     <!-- ══ P&L ══ -->
@@ -1914,12 +1617,6 @@ function toggleTablerTrust(checked) {
       <button class="more-item" onclick="showTab('members',document.querySelector('[data-tab=members]'));closeMoreSheet();syncBottomNav('members')">
         <span class="more-item-icon">👥</span><span>Members</span>
       </button>
-      <button class="more-item" onclick="showTab('trust',document.querySelector('[data-tab=trust]'));closeMoreSheet();syncBottomNav('trust')">
-        <span class="more-item-icon">🏛</span><span>Trust</span>
-      </button>
-      <button class="more-item" onclick="showTab('trust',document.querySelector('[data-tab=trust]'));closeMoreSheet();syncBottomNav('trust')">
-        <span class="more-item-icon">🏛</span><span>Trust</span>
-      </button>
       <button class="more-item" id="moreSettingsBtn" onclick="showTab('settings',document.querySelector('[data-tab=settings]'));closeMoreSheet();syncBottomNav('settings')">
         <span class="more-item-icon">⚙️</span><span>Settings</span>
       </button>
@@ -1946,13 +1643,7 @@ function toggleTablerTrust(checked) {
           <div class="fg"><div class="field-label">Date * <span class="help-icon">?<span class="tip">Date the expense was incurred.</span></span></div><input type="date" id="tExpDt" onchange="document.getElementById('tExpQ').value=dateToQ(this.value)"></div>
           <div class="fg"><div class="field-label">Amount (₹) * <span class="help-icon">?<span class="tip">Total amount you paid.</span></span></div><input type="number" id="tExpAmt" placeholder="0" min="0"></div>
         </div>
-        <div class="fg" style="padding:10px;background:var(--gold-bg,rgba(215,168,83,.08));border:1px solid var(--gold-mid,#d7a853);border-radius:var(--r);margin-bottom:2px">
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-              <input type="checkbox" id="tIsTrust" onchange="toggleTablerTrust(this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
-              <span style="font-size:13px;font-weight:600">🏛 Trust Expense</span>
-            </label>
-            <div style="font-size:11px;color:var(--t3);margin-top:4px;padding-left:28px">Check if this expense belongs to JRT Trust, not the Table</div>
-          </div>
+                  </div>
           <div class="fg"><div class="field-label">Category * <span class="help-icon">?<span class="tip">Which expense head this falls under.</span></span></div><select id="tExpCat"></select></div>
         <div class="fg r2">
           <div class="fg"><div class="field-label">Payment Mode * <span class="help-icon">?<span class="tip">Cash = from your own cash. Bank = from your bank account.</span></span></div><select id="tExpMode"><option>Cash</option><option>Bank</option></select></div>
@@ -2226,48 +1917,6 @@ function toggleTablerTrust(checked) {
   <div style="font-family:'Sora',sans-serif;font-size:15px;font-weight:600;
     color:rgba(255,255,255,.85)">Syncing your data…</div>
   <div style="font-size:12px;color:rgba(255,255,255,.4)">Connecting to Google Sheets</div>
-</div>
-
-<!-- Trust Expense Modal -->
-<div class="mo" id="moTrustExp">
-  <div class="mo-box" style="max-width:480px">
-    <div class="mo-head">
-      <div class="mo-title" id="trustExpMoT">Add Trust Expense</div>
-      <button class="mo-close" onclick="cMo('moTrustExp')">✕</button>
-    </div>
-    <div class="mo-body">
-      <input type="hidden" id="trustExpId">
-      <div class="fg r2">
-        <div class="fg"><div class="field-label">Date *</div><input type="date" id="trustExpDt"></div>
-        <div class="fg"><div class="field-label">Mode *</div>
-          <select id="trustExpMode"><option>Cash</option><option>Bank</option></select>
-        </div>
-      </div>
-      <div class="fg r2">
-        <div class="fg"><div class="field-label">Category *</div>
-          <select id="trustExpCat"><option value="">Select category</option></select>
-        </div>
-        <div class="fg"><div class="field-label">Amount (₹) *</div>
-          <input type="number" id="trustExpAmt" placeholder="0" min="0">
-        </div>
-      </div>
-      <div class="fg"><div class="field-label">Description / Remark *</div>
-        <input type="text" id="trustExpRmk" placeholder="What was this expense for?">
-      </div>
-      <div class="fg r2">
-        <div class="fg"><div class="field-label">Submitted By</div>
-          <input type="text" id="trustExpName" placeholder="Name (optional)">
-        </div>
-        <div class="fg"><div class="field-label">Payment Status</div>
-          <select id="trustExpPaid"><option value="false">Unpaid</option><option value="true">Paid</option></select>
-        </div>
-      </div>
-    </div>
-    <div class="mo-foot">
-      <button class="btn btn-ghost" onclick="cMo('moTrustExp')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTrustExp()">💾 Save Trust Expense</button>
-    </div>
-  </div>
 </div>
 
 <div class="toast" id="tst" role="alert"></div>
@@ -2638,7 +2287,6 @@ function renderTab(name) {
   else if (name==='journal')   renderJrnl();
   else if (name==='members')   renderMems();
   else if (name==='pl')        renderPL();
-  else if (name==='trust')     renderTrust();
   else if (name==='settings')  renderSet();
 }
 
@@ -2985,16 +2633,39 @@ function saveExp() {
       if (prev.pendingId && !ex.pendingId) ex.pendingId = prev.pendingId;
       d.expenses[i] = ex;
 
-      /* BUG FIX: if paid status changed to true, update the linked pending record
-         so the Tabler sees "Paid" instead of "Approved" in their history */
-      if (ex.paid && !prev.paid && ex.pendingId) {
-        const pidx = (S.pending || []).findIndex(p => String(p.id) === String(ex.pendingId));
-        if (pidx >= 0) {
-          S.pending[pidx].status = 'paid';
-          /* Tell backend */
-          if (API.url) {
-            API.reviewExpense(cYear, ex.pendingId, 'paid', 'Payment confirmed by Treasurer')
-               .catch(e => console.warn('Pending paid update failed:', e.message));
+      /* When paid status changes to true, update the linked pending record
+         so the Tabler sees "Paid ✅" instead of "Approved" in their history.
+         
+         Two lookup strategies:
+         1. Direct: via pendingId field (expenses approved after the fix was deployed)
+         2. Fallback: match by submittedBy name + amount + category (older expenses
+            that were approved before pendingId was added to the code) */
+      if (ex.paid && !prev.paid) {
+        let targetPendingId = ex.pendingId;
+
+        /* Fallback: find matching pending record by expense details */
+        if (!targetPendingId) {
+          const match = (S.pending || []).find(p =>
+            (p.status||'').toLowerCase() === 'approved' &&
+            String(p.amount)   === String(ex.amount) &&
+            String(p.category) === String(ex.category) &&
+            (p.submittedBy || '') === (ex.name || '')
+          );
+          if (match) {
+            targetPendingId = match.id;
+            /* Backfill pendingId on the expense so future saves use direct lookup */
+            ex.pendingId = match.id;
+          }
+        }
+
+        if (targetPendingId) {
+          const pidx = (S.pending || []).findIndex(p => String(p.id) === String(targetPendingId));
+          if (pidx >= 0) {
+            S.pending[pidx].status = 'paid';
+            if (API.url) {
+              API.reviewExpense(cYear, targetPendingId, 'paid', '')
+                 .catch(e => console.warn('Pending paid update failed:', e.message));
+            }
           }
         }
       }
@@ -4158,7 +3829,7 @@ function renderPendingList() {
             <div style="font-size:11px;color:var(--text-muted)">
               ${p.submittedBy} · ${isoToLocalDate(p.date||'')} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · Q${p.period||dateToQ(p.date)} ${statusBadge}
             </div>
-            ${p.rejectReason ? `<div style="font-size:11px;color:var(--red);margin-top:4px">Rejection reason: ${p.rejectReason}</div>` : ''}
+            ${p.rejectReason && (p.status||'').toLowerCase()==='rejected' ? `<div style="font-size:11px;color:var(--red);margin-top:4px">Rejection reason: ${p.rejectReason}</div>` : ''}
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700">${INR(p.amount)}</div>
@@ -4376,7 +4047,6 @@ async function submitTablerExp() {
   msg.style.display = 'block'; msg.style.color = 'var(--text-muted)';
   msg.textContent = 'Submitting…';
 
-  const isTrust = document.getElementById('tIsTrust')?.checked || false;
 
   /* ── Deduplication: check if this exact submission was already sent ──
      We compare by (date + amount + category + submittedBy) as a content
@@ -4489,7 +4159,7 @@ async function loadTablerHistory() {
             <div style="font-size:13px;font-weight:600;margin-bottom:3px">${p.category}</div>
             <div style="font-size:11px;color:var(--text-muted)">${isoToLocalDate(p.date||'')} · <span class="badge b-${(p.mode||'cash').toLowerCase()}">${p.mode}</span> · <span class="badge b-${(p.period||'q1').toLowerCase()}">${p.period}</span></div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${p.remark}</div>
-            ${p.rejectReason ? `<div style="font-size:11px;color:var(--red);margin-top:5px;padding:5px 8px;background:var(--red-bg);border-radius:4px;border:1px solid var(--red-bd)"><strong>Rejection reason:</strong> ${p.rejectReason}</div>` : ''}
+            ${p.rejectReason && (p.status||'').toLowerCase()==='rejected' ? `<div style="font-size:11px;color:var(--red);margin-top:5px;padding:5px 8px;background:var(--red-bg);border-radius:4px;border:1px solid var(--red-bd)"><strong>Rejection reason:</strong> ${p.rejectReason}</div>` : ''}
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700">${INR(p.amount)}</div>
